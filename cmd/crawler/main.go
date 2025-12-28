@@ -1,0 +1,169 @@
+package main
+
+import (
+	"context"
+	"crawleragent-v2/internal/config"
+	"crawleragent-v2/internal/domain/entity"
+	"crawleragent-v2/internal/domain/model"
+	"crawleragent-v2/internal/infra/crawler/parallel"
+	"crawleragent-v2/internal/infra/embedding"
+	"crawleragent-v2/internal/infra/persistence/es"
+	"crawleragent-v2/internal/service/crawler"
+	"crawleragent-v2/param"
+	_ "embed"
+	"encoding/json"
+	"fmt"
+	"log"
+	"time"
+)
+
+//go:embed appconfig/appconfig.json
+var appConfig []byte
+
+var (
+	urlBoss           = "https://www.zhipin.com/web/geek/jobs?city=100010000&salary=406&experience=102&query=golang"
+	urlPatternBoss    = "https://www.zhipin.com/wapi/zpgeek/search/joblist.json*"
+	urlCnBlogs        = "https://www.cnblogs.com/"
+	urlPatternCnBlogs = "https://www.cnblogs.com/AggSite/AggSitePostList*"
+	selectorCnBlogs   = `//a[starts-with(@href, "/sitehome/p/") and text()=">"]`
+	urlBili           = "https://www.bilibili.com/"
+	urlPatternBili    = "https://api.bilibili.com/x/web-interface/index/ogv/rcmd*"
+)
+
+func main() {
+	appcfg, err := config.ParseConfig(appConfig)
+	if err != nil {
+		log.Fatalf("解析配置失败: %v", err)
+	}
+
+	fmt.Printf("Chromedp UserDataDir: %s\n", appcfg.Rod.UserDataDir)
+
+	//context.Background()
+	// 这是最常用的根Context，通常用在main函数、初始化或测试中，作为整个Context树的顶层。
+	// 当你不知道使用哪个Context，或者没有可用的Context时，可以使用它作为起点。
+	// 它永远不会被取消，没有超时时间，也没有值。
+	ctx := context.Background()
+	//运行前确保es服务启动完成
+	parallelCrawler, err := parallel.InitBrowserPoolCrawler(appcfg, 3)
+	if err != nil {
+		log.Fatalf("初始化BrowserPoolCrawler失败: %v", err)
+	}
+	defer parallelCrawler.Close()
+	/*
+		clickXActions := make([]param.Action, 0, 5)
+		for range 5 {
+			clickXActions = append(clickXActions, &param.ClickXAction{
+				BaseParams: param.BaseParams{
+					Delay: 1000 * time.Millisecond,
+				},
+				Selector: selectorCnBlogs,
+			},
+			)
+		}
+	*/
+
+	scrollActions := make([]param.Action, 0, 5)
+	for range 5 {
+		scrollActions = append(scrollActions, &param.ScrollAction{
+			BaseParams: param.BaseParams{
+				Delay: 1000 * time.Millisecond,
+			},
+			ScrollY: 1000,
+		})
+	}
+
+	toDocBoss := func(body []byte) ([]model.Document, error) {
+		var jsonData struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+			ZpData  struct {
+				HasMore    bool                    `json:"hasMore"`
+				JobResList []entity.RowBossJobData `json:"jobList"`
+			} `json:"zpData"`
+		}
+
+		if err := json.Unmarshal(body, &jsonData); err != nil {
+			return nil, fmt.Errorf("JSON解析失败: %v", err)
+		}
+
+		if jsonData.Code != 0 {
+			return nil, fmt.Errorf("API返回错误: %d - %s", jsonData.Code, jsonData.Message)
+		}
+
+		results := make([]model.Document, 0, len(jsonData.ZpData.JobResList))
+		for _, job := range jsonData.ZpData.JobResList {
+			rowData := &entity.RowBossJobData{
+				EncryptJobId:     job.EncryptJobId,
+				SecurityId:       job.SecurityId,
+				JobName:          job.JobName,
+				SalaryDesc:       job.SalaryDesc,
+				BrandName:        job.BrandName,
+				BrandScaleName:   job.BrandScaleName,
+				CityName:         job.CityName,
+				AreaDistrict:     job.AreaDistrict,
+				BusinessDistrict: job.BusinessDistrict,
+				JobLabels:        job.JobLabels,
+				Skills:           job.Skills,
+				JobExperience:    job.JobExperience,
+				JobDegree:        job.JobDegree,
+				WelfareList:      job.WelfareList,
+			}
+			doc := rowData.ToDocument()
+			results = append(results, doc)
+		}
+		return results, nil
+	}
+
+	typedClient, err := es.InitTypedEsClient(appcfg, 10)
+	if err != nil {
+		log.Fatalf("初始化TypedEsClient失败: %v", err)
+	}
+
+	embedder, err := embedding.InitEmbedder(ctx, appcfg, 5, 1)
+	if err != nil {
+		log.Fatalf("初始化嵌入器失败: %v", err)
+	}
+
+	crawlerService := crawler.InitCrawlerService(parallelCrawler, embedder, typedClient)
+	params := []*param.ParallelCrawlerParam{
+		{
+			URL: urlBoss,
+			NetworkConfigs: []*param.ParallelNetworkConfig{
+				{
+					URLPattern:   urlPatternBoss,
+					RespChanSize: 100,
+					ToDocFunc:    toDocBoss,
+				},
+			},
+			Actions: scrollActions,
+		},
+		{
+			URL: urlBili,
+			NetworkConfigs: []*param.ParallelNetworkConfig{
+				{
+					URLPattern:   urlPatternBili,
+					RespChanSize: 100,
+				},
+			},
+			Actions: scrollActions,
+		},
+	}
+	err = crawlerService.StartCrawling(ctx, params)
+	if err != nil {
+		log.Fatalf("启动爬虫失败: %v", err)
+	}
+
+	count, err := typedClient.CountDocs(ctx, (&model.BossJobDoc{}).GetIndex())
+	if err != nil {
+		log.Fatalf("查询索引文档数量失败: %v", err)
+	}
+	//打印索引中的文档数量
+	fmt.Printf("索引中的文档数量: %d\n", count)
+
+	err = typedClient.ToExcel(ctx, "C:/Users/15325/Desktop/boss_jobs.xlsx", (&model.BossJobDoc{}).GetIndex(), []string{"salaryDesc"}, 1000)
+	if err != nil {
+		log.Fatalf("导出索引文档到Excel失败: %v", err)
+	}
+
+	log.Println("所有任务完成")
+}

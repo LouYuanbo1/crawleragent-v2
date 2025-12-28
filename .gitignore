@@ -30,3 +30,12 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+#Chrome user data dir
+cmd/crawlagent/user_data_dir/
+cmd/crawler/user_data_dir/
+
+#App config file
+cmd/crawlagent/appconfig/appconfig.json
+cmd/crawler/appconfig/appconfig.json
+cmd/searchagent/appconfig/appconfig.json
