@@ -28,6 +28,8 @@ var (
 	selectorCnBlogs   = `//a[starts-with(@href, "/sitehome/p/") and text()=">"]`
 	urlBili           = "https://www.bilibili.com/"
 	urlPatternBili    = "https://api.bilibili.com/x/web-interface/index/ogv/rcmd*"
+	urlCsdn           = "https://www.csdn.net/"
+	urlPatternCsdn    = "https://cms-api.csdn.net/v1/web_home/select_content*"
 )
 
 func main() {
@@ -49,24 +51,23 @@ func main() {
 		log.Fatalf("初始化BrowserPoolCrawler失败: %v", err)
 	}
 	defer parallelCrawler.Close()
-	/*
-		clickXActions := make([]param.Action, 0, 5)
-		for range 5 {
-			clickXActions = append(clickXActions, &param.ClickXAction{
-				BaseParams: param.BaseParams{
-					Delay: 1000 * time.Millisecond,
-				},
-				Selector: selectorCnBlogs,
+
+	clickXActions := make([]param.Action, 0, 5)
+	for range 5 {
+		clickXActions = append(clickXActions, &param.ClickXAction{
+			BaseParams: param.BaseParams{
+				Delay: 2000 * time.Millisecond,
 			},
-			)
-		}
-	*/
+			Selector: selectorCnBlogs,
+		},
+		)
+	}
 
 	scrollActions := make([]param.Action, 0, 5)
 	for range 5 {
 		scrollActions = append(scrollActions, &param.ScrollAction{
 			BaseParams: param.BaseParams{
-				Delay: 1000 * time.Millisecond,
+				Delay: 2000 * time.Millisecond,
 			},
 			ScrollY: 1000,
 		})
@@ -142,6 +143,26 @@ func main() {
 			NetworkConfigs: []*param.ParallelNetworkConfig{
 				{
 					URLPattern:   urlPatternBili,
+					RespChanSize: 100,
+				},
+			},
+			Actions: scrollActions,
+		},
+		{
+			URL: urlCnBlogs,
+			NetworkConfigs: []*param.ParallelNetworkConfig{
+				{
+					URLPattern:   urlPatternCnBlogs,
+					RespChanSize: 100,
+				},
+			},
+			Actions: clickXActions,
+		},
+		{
+			URL: urlCsdn,
+			NetworkConfigs: []*param.ParallelNetworkConfig{
+				{
+					URLPattern:   urlPatternCsdn,
 					RespChanSize: 100,
 				},
 			},
