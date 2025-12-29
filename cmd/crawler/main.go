@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crawleragent-v2/internal/config"
-	"crawleragent-v2/internal/domain/entity"
 	"crawleragent-v2/internal/domain/model"
 	"crawleragent-v2/internal/infra/crawler/parallel"
 	"crawleragent-v2/internal/infra/embedding"
@@ -11,7 +10,6 @@ import (
 	"crawleragent-v2/internal/service/crawler"
 	"crawleragent-v2/param"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -73,48 +71,87 @@ func main() {
 		})
 	}
 
-	toDocBoss := func(body []byte) ([]model.Document, error) {
-		var jsonData struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-			ZpData  struct {
-				HasMore    bool                    `json:"hasMore"`
-				JobResList []entity.RowBossJobData `json:"jobList"`
-			} `json:"zpData"`
-		}
-
-		if err := json.Unmarshal(body, &jsonData); err != nil {
-			return nil, fmt.Errorf("JSON解析失败: %v", err)
-		}
-
-		if jsonData.Code != 0 {
-			return nil, fmt.Errorf("API返回错误: %d - %s", jsonData.Code, jsonData.Message)
-		}
-
-		results := make([]model.Document, 0, len(jsonData.ZpData.JobResList))
-		for _, job := range jsonData.ZpData.JobResList {
-			rowData := &entity.RowBossJobData{
-				EncryptJobId:     job.EncryptJobId,
-				SecurityId:       job.SecurityId,
-				JobName:          job.JobName,
-				SalaryDesc:       job.SalaryDesc,
-				BrandName:        job.BrandName,
-				BrandScaleName:   job.BrandScaleName,
-				CityName:         job.CityName,
-				AreaDistrict:     job.AreaDistrict,
-				BusinessDistrict: job.BusinessDistrict,
-				JobLabels:        job.JobLabels,
-				Skills:           job.Skills,
-				JobExperience:    job.JobExperience,
-				JobDegree:        job.JobDegree,
-				WelfareList:      job.WelfareList,
-			}
-			doc := rowData.ToDocument()
-			results = append(results, doc)
-		}
-		return results, nil
+	jsActions := make([]param.Action, 0, 5)
+	for range 5 {
+		jsActions = append(jsActions, &param.JavaScriptAction{
+			BaseParams: param.BaseParams{
+				Delay: 2000 * time.Millisecond,
+			},
+			JavaScript: `
+					() => {
+						function getAllHrefLinks() {
+							// 选择器「[href]」匹配所有拥有href属性的元素（无论标签类型）
+							const hrefElements = document.querySelectorAll('[href]');
+							
+							const allHrefs = Array.from(hrefElements)
+								.map(element => {
+								// 按需选择：获取绝对路径 OR 原始属性值
+								const absoluteHref = element.href; // 完整URL（推荐，通用性更强）
+								const originalHref = element.getAttribute('href'); // 原始值（如 "../test.html"、"#top"）
+								return absoluteHref; // 可替换为 originalHref
+								})
+								.filter(href => !!href.trim()) // 过滤无效空链接
+								.filter((href, index, self) => self.indexOf(href) === index); // 数组去重
+							
+							return allHrefs;
+						}
+						return getAllHrefLinks();
+					}
+				`,
+			ContentChanSize: 100,
+		})
 	}
 
+	scrollAndJsActions := make([]param.Action, 0, 10)
+
+	for i := range 5 {
+		scrollAndJsActions = append(scrollAndJsActions, scrollActions[i])
+		scrollAndJsActions = append(scrollAndJsActions, jsActions[i])
+	}
+
+	/*
+		toDocBoss := func(body []byte) ([]model.Document, error) {
+			var jsonData struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+				ZpData  struct {
+					HasMore    bool                    `json:"hasMore"`
+					JobResList []entity.RowBossJobData `json:"jobList"`
+				} `json:"zpData"`
+			}
+
+			if err := json.Unmarshal(body, &jsonData); err != nil {
+				return nil, fmt.Errorf("JSON解析失败: %v", err)
+			}
+
+			if jsonData.Code != 0 {
+				return nil, fmt.Errorf("API返回错误: %d - %s", jsonData.Code, jsonData.Message)
+			}
+
+			results := make([]model.Document, 0, len(jsonData.ZpData.JobResList))
+			for _, job := range jsonData.ZpData.JobResList {
+				rowData := &entity.RowBossJobData{
+					EncryptJobId:     job.EncryptJobId,
+					SecurityId:       job.SecurityId,
+					JobName:          job.JobName,
+					SalaryDesc:       job.SalaryDesc,
+					BrandName:        job.BrandName,
+					BrandScaleName:   job.BrandScaleName,
+					CityName:         job.CityName,
+					AreaDistrict:     job.AreaDistrict,
+					BusinessDistrict: job.BusinessDistrict,
+					JobLabels:        job.JobLabels,
+					Skills:           job.Skills,
+					JobExperience:    job.JobExperience,
+					JobDegree:        job.JobDegree,
+					WelfareList:      job.WelfareList,
+				}
+				doc := rowData.ToDocument()
+				results = append(results, doc)
+			}
+			return results, nil
+		}
+	*/
 	typedClient, err := es.InitTypedEsClient(appcfg, 10)
 	if err != nil {
 		log.Fatalf("初始化TypedEsClient失败: %v", err)
@@ -127,17 +164,19 @@ func main() {
 
 	crawlerService := crawler.InitCrawlerService(parallelCrawler, embedder, typedClient)
 	params := []*param.ParallelCrawlerParam{
-		{
-			URL: urlBoss,
-			NetworkConfigs: []*param.ParallelNetworkConfig{
-				{
-					URLPattern:   urlPatternBoss,
-					RespChanSize: 100,
-					ToDocFunc:    toDocBoss,
+		/*
+			{
+				URL: urlBoss,
+				NetworkConfigs: []*param.ParallelNetworkConfig{
+					{
+						URLPattern:   urlPatternBoss,
+						RespChanSize: 100,
+						ToDocFunc:    toDocBoss,
+					},
 				},
+				Actions: scrollActions,
 			},
-			Actions: scrollActions,
-		},
+		*/
 		{
 			URL: urlBili,
 			NetworkConfigs: []*param.ParallelNetworkConfig{
@@ -146,28 +185,30 @@ func main() {
 					RespChanSize: 100,
 				},
 			},
-			Actions: scrollActions,
+			Actions: scrollAndJsActions,
 		},
-		{
-			URL: urlCnBlogs,
-			NetworkConfigs: []*param.ParallelNetworkConfig{
-				{
-					URLPattern:   urlPatternCnBlogs,
-					RespChanSize: 100,
+		/*
+			{
+				URL: urlCnBlogs,
+				NetworkConfigs: []*param.ParallelNetworkConfig{
+					{
+						URLPattern:   urlPatternCnBlogs,
+						RespChanSize: 100,
+					},
 				},
+				Actions: clickXActions,
 			},
-			Actions: clickXActions,
-		},
-		{
-			URL: urlCsdn,
-			NetworkConfigs: []*param.ParallelNetworkConfig{
-				{
-					URLPattern:   urlPatternCsdn,
-					RespChanSize: 100,
+			{
+				URL: urlCsdn,
+				NetworkConfigs: []*param.ParallelNetworkConfig{
+					{
+						URLPattern:   urlPatternCsdn,
+						RespChanSize: 100,
+					},
 				},
+				Actions: scrollActions,
 			},
-			Actions: scrollActions,
-		},
+		*/
 	}
 	err = crawlerService.StartCrawling(ctx, params)
 	if err != nil {
