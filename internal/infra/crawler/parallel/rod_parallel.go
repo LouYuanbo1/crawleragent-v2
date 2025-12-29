@@ -183,11 +183,13 @@ func (c *browserPoolCrawler) processParam(ctx context.Context, workerID int, err
 	for _, networkConfig := range runtime.NetworkConfigs {
 		waitIncludes = append(waitIncludes, networkConfig.URLPattern)
 	}
-	//time.Sleep(120 * time.Second)
-	err = c.executeActions(page, runtime.Actions, waitIncludes, nil)
-	if err != nil {
-		errCh <- fmt.Errorf("执行操作失败: %v", err)
-		return
+
+	for _, action := range runtime.Actions {
+		err := c.executeAction(page, action, waitIncludes, nil)
+		if err != nil {
+			errCh <- fmt.Errorf("执行操作失败: %v", err)
+			return
+		}
 	}
 }
 
@@ -206,53 +208,56 @@ func (c *browserPoolCrawler) navigateURL(page *rod.Page, workerID int, url strin
 	return nil
 }
 
-func (c *browserPoolCrawler) executeActions(page *rod.Page, actions []param.Action, waitIncludes, waitExcludes []string) error {
-	if len(actions) == 0 {
-		return nil
+func (c *browserPoolCrawler) executeAction(page *rod.Page, action param.Action, waitIncludes, waitExcludes []string) error {
+	err := action.Validate()
+	if err != nil {
+		return fmt.Errorf("操作验证失败: %v", err)
 	}
-	for _, action := range actions {
-		err := action.Validate()
+	switch a := action.(type) {
+	case *param.ClickAction:
+		element, err := page.Element(a.Selector)
 		if err != nil {
-			return fmt.Errorf("操作验证失败: %v", err)
+			return fmt.Errorf("点击操作失败: %v", err)
 		}
-		switch a := action.(type) {
-		case *param.ClickAction:
-			element, err := page.Element(a.Selector)
-			if err != nil {
-				return fmt.Errorf("点击操作失败: %v", err)
-			}
-			err = element.Click(proto.InputMouseButtonLeft, 1)
-			if err != nil {
-				return fmt.Errorf("点击操作失败: %v", err)
-			}
-			page.WaitRequestIdle(500*time.Millisecond, waitIncludes, waitExcludes, nil)
-			time.Sleep(a.Delay)
-		case *param.ClickXAction:
-			element, err := page.ElementX(a.Selector)
-			if err != nil {
-				return fmt.Errorf("点击X操作失败: %v", err)
-			}
-			err = element.Click(proto.InputMouseButtonLeft, 1)
-			if err != nil {
-				return fmt.Errorf("点击X操作失败: %v", err)
-			}
-			page.WaitRequestIdle(500*time.Millisecond, waitIncludes, waitExcludes, nil)
-			time.Sleep(a.Delay)
-		case *param.ScrollAction:
-			_, err = page.Eval(
-				`
-				(scrollY) => {
-					window.scrollBy({
-						top: scrollY,
-						behavior: 'smooth'
-					});
-				}
-			`, a.ScrollY)
-			page.WaitRequestIdle(500*time.Millisecond, waitIncludes, waitExcludes, nil)
-			time.Sleep(a.Delay)
-		default:
-			return fmt.Errorf("未知操作类型: %T", a)
+		err = element.Click(proto.InputMouseButtonLeft, 1)
+		if err != nil {
+			return fmt.Errorf("点击操作失败: %v", err)
 		}
+		page.WaitRequestIdle(500*time.Millisecond, waitIncludes, waitExcludes, nil)
+		time.Sleep(a.Delay)
+	case *param.ClickXAction:
+		element, err := page.ElementX(a.Selector)
+		if err != nil {
+			return fmt.Errorf("点击X操作失败: %v", err)
+		}
+		err = element.Click(proto.InputMouseButtonLeft, 1)
+		if err != nil {
+			return fmt.Errorf("点击X操作失败: %v", err)
+		}
+		page.WaitRequestIdle(500*time.Millisecond, waitIncludes, waitExcludes, nil)
+		time.Sleep(a.Delay)
+	case *param.ScrollAction:
+		_, err = page.Eval(
+			`
+					(scrollY) => {
+						window.scrollBy({
+							top: scrollY,
+							behavior: 'smooth'
+						});
+					}
+				`, a.ScrollY)
+		page.WaitRequestIdle(500*time.Millisecond, waitIncludes, waitExcludes, nil)
+		time.Sleep(a.Delay)
+	case *JavaScriptActionRuntime:
+		// 执行JavaScript操作
+		err = c.executeJavaScript(page, a)
+		if err != nil {
+			return fmt.Errorf("执行JavaScript操作失败: %v", err)
+		}
+		page.WaitRequestIdle(500*time.Millisecond, waitIncludes, waitExcludes, nil)
+		time.Sleep(a.Delay)
+	default:
+		return fmt.Errorf("未知操作类型: %T", a)
 	}
 	return nil
 }
@@ -280,4 +285,26 @@ func (c *browserPoolCrawler) setListener(ctx context.Context, browser *rod.Brows
 		})
 	}
 	return router
+}
+
+func (c *browserPoolCrawler) executeJavaScript(page *rod.Page, runtime *JavaScriptActionRuntime) error {
+	result, err := page.Eval(runtime.JavaScript, runtime.JavaScriptArgs...)
+	if err != nil {
+		return fmt.Errorf("执行JavaScript失败: %v", err)
+	}
+	//log.Printf("执行JavaScript: %s", javascript)
+	jsonResult, err := result.Value.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("JSON序列化失败: %v", err)
+	}
+	info, err := page.Info()
+	if err != nil {
+		return fmt.Errorf("获取页面信息失败: %v", err)
+	}
+	log.Printf("执行JavaScript成功: %d", len(jsonResult))
+	runtime.ContentChan <- &types.HtmlContent{
+		Url:     info.URL,
+		Content: jsonResult,
+	}
+	return nil
 }

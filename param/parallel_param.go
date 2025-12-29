@@ -2,11 +2,6 @@ package param
 
 import "crawleragent-v2/internal/domain/model"
 
-type ParallelHTMLConfig struct {
-	ContentChanSize int                                                    `json:"content_chan_size"`
-	ToDocJsFunc     func(js string, args ...any) ([]model.Document, error) `json:"to_doc_js_func"`
-}
-
 type ParallelNetworkConfig struct {
 	URLPattern   string                                      `json:"url_pattern"`
 	RespChanSize int                                         `json:"resp_chan_size"`
@@ -14,8 +9,7 @@ type ParallelNetworkConfig struct {
 }
 
 type ParallelCrawlerParam struct {
-	URL string `json:"url"`
-	//HTMLConfigs    []*ParallelHTMLConfig    `json:"html_configs"`
+	URL            string                   `json:"url"`
 	NetworkConfigs []*ParallelNetworkConfig `json:"network_configs"`
 	Actions        []Action                 `json:"actions"`
 }
