@@ -33,16 +33,12 @@ func InitEmbedder(ctx context.Context, cfg *config.Config, batchSize int, embedS
 
 // Embed 将文本转换为向量表示
 func (e *embedding) Embed(ctx context.Context, strings []string) ([][]float32, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
 	if len(strings) == 0 {
 		return nil, nil
 	}
-	// 获取信号量（带超时）
-	if err := e.embedSem.Acquire(ctx, 1); err != nil {
-		return nil, fmt.Errorf("等待词嵌入信号量超时: %w", err)
-	}
-	defer e.embedSem.Release(1) // 保证释放
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
 	embeddingVectors := make([][]float32, 0, len(strings))
 	var err error
@@ -70,6 +66,12 @@ func (e *embedding) Embed(ctx context.Context, strings []string) ([][]float32, e
 }
 
 func (e *embedding) batchEmbedStringsAndToFloat32(ctx context.Context, strings []string) ([][]float32, error) {
+	// 获取信号量（带超时）
+	if err := e.embedSem.Acquire(ctx, 1); err != nil {
+		return nil, fmt.Errorf("等待词嵌入信号量超时: %w", err)
+	}
+	defer e.embedSem.Release(1) // 保证释放
+
 	float64Vectors, err := e.model.EmbedStrings(ctx, strings)
 	if err != nil {
 		return nil, err

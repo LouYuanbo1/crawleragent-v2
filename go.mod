@@ -10,6 +10,7 @@ require (
 	github.com/elastic/go-elasticsearch/v9 v9.2.1
 	github.com/go-rod/rod v0.116.2
 	github.com/go-rod/stealth v0.4.9
+	github.com/google/uuid v1.6.0
 	github.com/panjf2000/ants/v2 v2.11.4
 	github.com/redis/go-redis/v9 v9.17.2
 	github.com/xuri/excelize/v2 v2.10.0
@@ -35,7 +36,6 @@ require (
 	github.com/elastic/elastic-transport-go/v8 v8.8.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect

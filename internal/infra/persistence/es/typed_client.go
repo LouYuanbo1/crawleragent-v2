@@ -114,6 +114,11 @@ func (tec *typedEsClient) IndexDocWithID(ctx context.Context, doc model.Document
 }
 
 func (tec *typedEsClient) BulkIndexDocsWithID(ctx context.Context, docs []model.Document) error {
+
+	if len(docs) == 0 {
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	// 获取信号量（带超时）
@@ -122,9 +127,6 @@ func (tec *typedEsClient) BulkIndexDocsWithID(ctx context.Context, docs []model.
 	}
 	defer tec.esSem.Release(1) // 保证释放
 
-	if len(docs) == 0 {
-		return nil
-	}
 	bi, err := esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
 		Index:         docs[0].GetIndex(), // 目标索引名称
 		Client:        tec.client,         // Elasticsearch 客户端
