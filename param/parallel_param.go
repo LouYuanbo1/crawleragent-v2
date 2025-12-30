@@ -1,11 +1,14 @@
 package param
 
-import "crawleragent-v2/internal/domain/model"
+import (
+	"context"
+	"crawleragent-v2/types"
+)
 
 type ParallelNetworkConfig struct {
-	URLPattern   string                                      `json:"url_pattern"`
-	RespChanSize int                                         `json:"resp_chan_size"`
-	ToDocFunc    func(body []byte) ([]model.Document, error) `json:"to_doc_func"`
+	URLPattern string `json:"url_pattern"`
+	//ToDocFunc   func(ctx context.Context, content types.UrlContent) ([]model.Document, error)
+	ProcessFunc func(ctx context.Context, content types.UrlContent) error
 }
 
 type ParallelCrawlerParam struct {

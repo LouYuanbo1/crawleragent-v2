@@ -1,7 +1,8 @@
 package param
 
 import (
-	"crawleragent-v2/internal/domain/model"
+	"context"
+	"crawleragent-v2/types"
 	"fmt"
 	"time"
 )
@@ -55,10 +56,10 @@ func (s *ScrollAction) Validate() error {
 
 type JavaScriptAction struct {
 	BaseParams
-	JavaScript      string                                         `json:"javascript"`        // 要执行的 JavaScript 代码
-	JavaScriptArgs  []any                                          `json:"javascript_args"`   // JavaScript 参数
-	ContentChanSize int                                            `json:"content_chan_size"` // 用于传递 JavaScript 执行结果，不序列化
-	ToDocFunc       func(content []byte) ([]model.Document, error) `json:"to_doc_func"`
+	JavaScript     string `json:"javascript"`      // 要执行的 JavaScript 代码
+	JavaScriptArgs []any  `json:"javascript_args"` // JavaScript 参数
+	//ToDocFunc      func(ctx context.Context, content types.UrlContent) ([]model.Document, error)
+	ProcessFunc func(ctx context.Context, content types.UrlContent) error
 }
 
 func (j *JavaScriptAction) Validate() error {
