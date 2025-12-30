@@ -53,8 +53,7 @@ func (c *crawlerService) StartCrawling(ctx context.Context, params []*param.Para
 
 func (c *crawlerService) initChan(ctx context.Context, params *param.ParallelCrawlerParam) (*parallel.ParallelCrawlerRuntime, error) {
 	runtime := &parallel.ParallelCrawlerRuntime{
-		URL:     params.URL,
-		Actions: params.Actions,
+		URL: params.URL,
 	}
 
 	var networkConfigs []*parallel.ParallelNetworkRuntime
@@ -70,14 +69,15 @@ func (c *crawlerService) initChan(ctx context.Context, params *param.ParallelCra
 	}
 	runtime.NetworkConfigs = networkConfigs
 
+	var runtimeActions []param.Action
 	for i := range params.Actions {
-		err := runtime.Actions[i].Validate()
+		err := params.Actions[i].Validate()
 		if err != nil {
 			return nil, fmt.Errorf("操作参数校验失败: %v", err)
 		}
-		if jsAction, ok := runtime.Actions[i].(*param.JavaScriptAction); ok {
+		if jsAction, ok := params.Actions[i].(*param.JavaScriptAction); ok {
 			contentChan := make(chan types.UrlContent, jsAction.ContentChanSize)
-			runtime.Actions[i] = &parallel.JavaScriptActionRuntime{
+			action := &parallel.JavaScriptActionRuntime{
 				BaseParams:     jsAction.BaseParams,
 				JavaScript:     jsAction.JavaScript,
 				JavaScriptArgs: jsAction.JavaScriptArgs,
@@ -86,9 +86,13 @@ func (c *crawlerService) initChan(ctx context.Context, params *param.ParallelCra
 			c.urlContentChans = append(c.urlContentChans, contentChan)
 			c.chanWg.Add(1)
 			go c.processChan(ctx, contentChan, jsAction.ToDocFunc)
+			runtimeActions = append(runtimeActions, action)
+		} else {
+			runtimeActions = append(runtimeActions, params.Actions[i])
 		}
 	}
-	runtime.Actions = params.Actions
+
+	runtime.Actions = runtimeActions
 
 	return runtime, nil
 }

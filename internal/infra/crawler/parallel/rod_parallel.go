@@ -3,6 +3,7 @@ package parallel
 import (
 	"context"
 	"crawleragent-v2/internal/config"
+	"crawleragent-v2/internal/infra/crawler"
 	"crawleragent-v2/param"
 	"crawleragent-v2/types"
 	"fmt"
@@ -11,8 +12,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	"crawleragent-v2/internal/infra/crawler"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
@@ -301,7 +300,7 @@ func (c *browserPoolCrawler) executeJavaScript(page *rod.Page, runtime *JavaScri
 	if err != nil {
 		return fmt.Errorf("获取页面信息失败: %v", err)
 	}
-	log.Printf("执行JavaScript成功: %d", len(jsonResult))
+	//log.Printf("执行JavaScript成功: %d, %s", len(jsonResult), string(jsonResult))
 	runtime.ContentChan <- &types.HtmlContent{
 		Url:     info.URL,
 		Content: jsonResult,
