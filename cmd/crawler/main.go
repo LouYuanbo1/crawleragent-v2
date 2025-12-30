@@ -179,7 +179,6 @@ func main() {
 	}
 
 	params := []*param.ParallelCrawlerParam{
-
 		{
 			URL: urlBoss,
 			NetworkConfigs: []*param.ParallelNetworkConfig{
@@ -188,7 +187,7 @@ func main() {
 					ProcessFunc: processFuncBoss,
 				},
 			},
-			Actions: scrollActions,
+			Actions: scrollAndJsActions,
 		},
 
 		{
@@ -209,18 +208,15 @@ func main() {
 			},
 			Actions: clickXAndJsActions,
 		},
-		/*
-			{
-				URL: urlCsdn,
-				NetworkConfigs: []*param.ParallelNetworkConfig{
-					{
-						URLPattern:   urlPatternCsdn,
-						RespChanSize: 100,
-					},
+		{
+			URL: urlCsdn,
+			NetworkConfigs: []*param.ParallelNetworkConfig{
+				{
+					URLPattern: urlPatternCsdn,
 				},
-				Actions: scrollActions,
 			},
-		*/
+			Actions: scrollAndJsActions,
+		},
 	}
 	err = crawlerService.StartCrawling(ctx, params)
 	if err != nil {
