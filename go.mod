@@ -10,6 +10,7 @@ require (
 	github.com/elastic/go-elasticsearch/v9 v9.2.1
 	github.com/go-rod/rod v0.116.2
 	github.com/go-rod/stealth v0.4.9
+	github.com/panjf2000/ants/v2 v2.11.4
 	github.com/xuri/excelize/v2 v2.10.0
 	golang.org/x/sync v0.19.0
 )

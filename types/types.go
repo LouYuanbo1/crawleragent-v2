@@ -3,7 +3,7 @@ package types
 type UrlContent interface {
 	GetUrl() string
 	GetUrlPattern() string
-	GetBody() []byte
+	GetContent() []byte
 }
 
 type NetworkResponse struct {
@@ -19,7 +19,7 @@ func (n *NetworkResponse) GetUrlPattern() string {
 	return n.UrlPattern
 }
 
-func (n *NetworkResponse) GetBody() []byte {
+func (n *NetworkResponse) GetContent() []byte {
 	return []byte(n.Body)
 }
 
@@ -35,6 +35,6 @@ func (h *HtmlContent) GetUrlPattern() string {
 	return ""
 }
 
-func (h *HtmlContent) GetBody() []byte {
+func (h *HtmlContent) GetContent() []byte {
 	return h.Content
 }

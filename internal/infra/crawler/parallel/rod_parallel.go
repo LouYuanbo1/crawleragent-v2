@@ -90,20 +90,20 @@ func (c *browserPoolCrawler) Close() {
 	c.browserPool.Cleanup(func(b *rod.Browser) { b.MustClose() })
 }
 
-func (c *browserPoolCrawler) Crawl(ctx context.Context, runtimes []*ParallelCrawlerRuntime) error {
+func (c *browserPoolCrawler) Crawl(ctx context.Context, params []*param.ParallelCrawlerParam) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	runtimeCh := make(chan *ParallelCrawlerRuntime, len(runtimes))
-	for _, op := range runtimes {
-		runtimeCh <- op
+	paramCh := make(chan *param.ParallelCrawlerParam, len(params))
+	for _, op := range params {
+		paramCh <- op
 	}
-	close(runtimeCh)
+	close(paramCh)
 
-	errCh := make(chan error, max(len(runtimeCh), len(c.browserPool)))
+	errCh := make(chan error, max(len(paramCh), len(c.browserPool)))
 
 	wg := sync.WaitGroup{}
-	for i := range min(len(c.browserPool), len(runtimes)) {
+	for i := range min(len(c.browserPool), len(params)) {
 		wg.Add(1)
 		go func(ctx context.Context, workerID int) {
 			defer wg.Done()
@@ -112,11 +112,11 @@ func (c *browserPoolCrawler) Crawl(ctx context.Context, runtimes []*ParallelCraw
 				case <-ctx.Done(): // 主动监听 ctx 取消
 					log.Printf("worker %d 取消执行，退出", workerID)
 					return
-				case runtime, ok := <-runtimeCh: // 读取任务
+				case param, ok := <-paramCh: // 读取任务
 					if !ok { // 通道关闭则退出
 						return
 					}
-					c.processParam(ctx, workerID, errCh, runtime)
+					c.processParam(ctx, workerID, errCh, param)
 				}
 			}
 		}(ctx, i)
@@ -135,7 +135,7 @@ func (c *browserPoolCrawler) Crawl(ctx context.Context, runtimes []*ParallelCraw
 	return nil
 }
 
-func (c *browserPoolCrawler) processParam(ctx context.Context, workerID int, errCh chan<- error, runtime *ParallelCrawlerRuntime) {
+func (c *browserPoolCrawler) processParam(ctx context.Context, workerID int, errCh chan<- error, params *param.ParallelCrawlerParam) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -145,7 +145,7 @@ func (c *browserPoolCrawler) processParam(ctx context.Context, workerID int, err
 		return
 	}
 	defer func() {
-		log.Printf("将 browser %d 返回池，处理的URL模式: %s 等...", workerID, runtime.NetworkConfigs[0].URLPattern)
+		log.Printf("将 browser %d 返回池，处理的URL模式: %s 等...", workerID, params.NetworkConfigs[0].URLPattern)
 		c.browserPool.Put(browser)
 	}()
 
@@ -160,8 +160,8 @@ func (c *browserPoolCrawler) processParam(ctx context.Context, workerID int, err
 	}()
 
 	// 设置所有网络监听器
-	if runtime.NetworkConfigs != nil {
-		router := c.setListener(ctx, browser, runtime.NetworkConfigs)
+	if params.NetworkConfigs != nil {
+		router := c.setListener(ctx, browser, params.NetworkConfigs)
 		go func() {
 			router.Run()
 			log.Printf("Worker %d 路由器停止运行", workerID)
@@ -172,19 +172,19 @@ func (c *browserPoolCrawler) processParam(ctx context.Context, workerID int, err
 		}()
 	}
 
-	err = c.navigateURL(page, workerID, runtime.URL)
+	err = c.navigateURL(page, workerID, params.URL)
 	if err != nil {
 		errCh <- fmt.Errorf("处理URL失败: %v", err)
 		return
 	}
 
 	var waitIncludes []string
-	for _, networkConfig := range runtime.NetworkConfigs {
+	for _, networkConfig := range params.NetworkConfigs {
 		waitIncludes = append(waitIncludes, networkConfig.URLPattern)
 	}
 
-	for _, action := range runtime.Actions {
-		err := c.executeAction(page, action, waitIncludes, nil)
+	for _, action := range params.Actions {
+		err := c.executeAction(ctx, page, action, waitIncludes, nil)
 		if err != nil {
 			errCh <- fmt.Errorf("执行操作失败: %v", err)
 			return
@@ -207,7 +207,7 @@ func (c *browserPoolCrawler) navigateURL(page *rod.Page, workerID int, url strin
 	return nil
 }
 
-func (c *browserPoolCrawler) executeAction(page *rod.Page, action param.Action, waitIncludes, waitExcludes []string) error {
+func (c *browserPoolCrawler) executeAction(ctx context.Context, page *rod.Page, action param.Action, waitIncludes, waitExcludes []string) error {
 	err := action.Validate()
 	if err != nil {
 		return fmt.Errorf("操作验证失败: %v", err)
@@ -247,9 +247,9 @@ func (c *browserPoolCrawler) executeAction(page *rod.Page, action param.Action, 
 				`, a.ScrollY)
 		page.WaitRequestIdle(500*time.Millisecond, waitIncludes, waitExcludes, nil)
 		time.Sleep(a.Delay)
-	case *JavaScriptActionRuntime:
+	case *param.JavaScriptAction:
 		// 执行JavaScript操作
-		err = c.executeJavaScript(page, a)
+		err = c.executeJavaScript(ctx, page, a)
 		if err != nil {
 			return fmt.Errorf("执行JavaScript操作失败: %v", err)
 		}
@@ -261,7 +261,7 @@ func (c *browserPoolCrawler) executeAction(page *rod.Page, action param.Action, 
 	return nil
 }
 
-func (c *browserPoolCrawler) setListener(ctx context.Context, browser *rod.Browser, networkConfigs []*ParallelNetworkRuntime) *rod.HijackRouter {
+func (c *browserPoolCrawler) setListener(ctx context.Context, browser *rod.Browser, networkConfigs []*param.ParallelNetworkConfig) *rod.HijackRouter {
 	router := browser.HijackRequests()
 	for _, networkConfig := range networkConfigs {
 		router.MustAdd(networkConfig.URLPattern, func(hijack *rod.Hijack) {
@@ -276,18 +276,29 @@ func (c *browserPoolCrawler) setListener(ctx context.Context, browser *rod.Brows
 				return
 			}
 			body := hijack.Response.Body()
-			networkConfig.RespChan <- &types.NetworkResponse{
-				Url:        hijack.Request.URL().String(),
-				UrlPattern: networkConfig.URLPattern,
-				Body:       body,
+
+			if networkConfig.ProcessFunc == nil {
+				return
+			}
+
+			err = networkConfig.ProcessFunc(ctx,
+				&types.NetworkResponse{
+					Url:        hijack.Request.URL().String(),
+					UrlPattern: networkConfig.URLPattern,
+					Body:       body,
+				},
+			)
+			if err != nil {
+				log.Printf("处理网络响应失败: %v", err)
+				return
 			}
 		})
 	}
 	return router
 }
 
-func (c *browserPoolCrawler) executeJavaScript(page *rod.Page, runtime *JavaScriptActionRuntime) error {
-	result, err := page.Eval(runtime.JavaScript, runtime.JavaScriptArgs...)
+func (c *browserPoolCrawler) executeJavaScript(ctx context.Context, page *rod.Page, action *param.JavaScriptAction) error {
+	result, err := page.Eval(action.JavaScript, action.JavaScriptArgs...)
 	if err != nil {
 		return fmt.Errorf("执行JavaScript失败: %v", err)
 	}
@@ -301,9 +312,19 @@ func (c *browserPoolCrawler) executeJavaScript(page *rod.Page, runtime *JavaScri
 		return fmt.Errorf("获取页面信息失败: %v", err)
 	}
 	//log.Printf("执行JavaScript成功: %d, %s", len(jsonResult), string(jsonResult))
-	runtime.ContentChan <- &types.HtmlContent{
-		Url:     info.URL,
-		Content: jsonResult,
+
+	if action.ProcessFunc == nil {
+		return nil
+	}
+
+	err = action.ProcessFunc(ctx,
+		&types.HtmlContent{
+			Url:     info.URL,
+			Content: jsonResult,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("处理JavaScript内容失败: %v", err)
 	}
 	return nil
 }

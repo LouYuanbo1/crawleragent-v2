@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"crawleragent-v2/internal/config"
+	"crawleragent-v2/internal/domain/entity"
 	"crawleragent-v2/internal/domain/model"
 	"crawleragent-v2/internal/infra/crawler/parallel"
 	"crawleragent-v2/internal/infra/embedding"
 	"crawleragent-v2/internal/infra/persistence/es"
 	"crawleragent-v2/internal/service/crawler"
 	"crawleragent-v2/param"
+	"crawleragent-v2/types"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -98,7 +101,6 @@ func main() {
 						return getAllHrefLinks();
 					}
 				`,
-			ContentChanSize: 100,
 		})
 	}
 
@@ -115,49 +117,6 @@ func main() {
 		clickXAndJsActions = append(clickXAndJsActions, jsActions[i])
 	}
 
-	/*
-		toDocBoss := func(body []byte) ([]model.Document, error) {
-			var jsonData struct {
-				Code    int    `json:"code"`
-				Message string `json:"message"`
-				ZpData  struct {
-					HasMore    bool                    `json:"hasMore"`
-					JobResList []entity.RowBossJobData `json:"jobList"`
-				} `json:"zpData"`
-			}
-
-			if err := json.Unmarshal(body, &jsonData); err != nil {
-				return nil, fmt.Errorf("JSON解析失败: %v", err)
-			}
-
-			if jsonData.Code != 0 {
-				return nil, fmt.Errorf("API返回错误: %d - %s", jsonData.Code, jsonData.Message)
-			}
-
-			results := make([]model.Document, 0, len(jsonData.ZpData.JobResList))
-			for _, job := range jsonData.ZpData.JobResList {
-				rowData := &entity.RowBossJobData{
-					EncryptJobId:     job.EncryptJobId,
-					SecurityId:       job.SecurityId,
-					JobName:          job.JobName,
-					SalaryDesc:       job.SalaryDesc,
-					BrandName:        job.BrandName,
-					BrandScaleName:   job.BrandScaleName,
-					CityName:         job.CityName,
-					AreaDistrict:     job.AreaDistrict,
-					BusinessDistrict: job.BusinessDistrict,
-					JobLabels:        job.JobLabels,
-					Skills:           job.Skills,
-					JobExperience:    job.JobExperience,
-					JobDegree:        job.JobDegree,
-					WelfareList:      job.WelfareList,
-				}
-				doc := rowData.ToDocument()
-				results = append(results, doc)
-			}
-			return results, nil
-		}
-	*/
 	typedClient, err := es.InitTypedEsClient(appcfg, 10)
 	if err != nil {
 		log.Fatalf("初始化TypedEsClient失败: %v", err)
@@ -168,27 +127,71 @@ func main() {
 		log.Fatalf("初始化嵌入器失败: %v", err)
 	}
 
-	crawlerService := crawler.InitCrawlerService(parallelCrawler, embedder, typedClient)
+	crawlerService := crawler.InitCrawlerService(parallelCrawler, embedder, typedClient, 5)
+
+	processFuncBoss := func(ctx context.Context, content types.UrlContent) error {
+		var jsonData struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+			ZpData  struct {
+				HasMore    bool                    `json:"hasMore"`
+				JobResList []entity.RowBossJobData `json:"jobList"`
+			} `json:"zpData"`
+		}
+
+		if err := json.Unmarshal(content.GetContent(), &jsonData); err != nil {
+			return fmt.Errorf("JSON解析失败: %v", err)
+		}
+
+		if jsonData.Code != 0 {
+			return fmt.Errorf("API返回错误: %d - %s", jsonData.Code, jsonData.Message)
+		}
+
+		results := make([]model.Document, 0, len(jsonData.ZpData.JobResList))
+		for _, job := range jsonData.ZpData.JobResList {
+			rowData := &entity.RowBossJobData{
+				EncryptJobId:     job.EncryptJobId,
+				SecurityId:       job.SecurityId,
+				JobName:          job.JobName,
+				SalaryDesc:       job.SalaryDesc,
+				BrandName:        job.BrandName,
+				BrandScaleName:   job.BrandScaleName,
+				CityName:         job.CityName,
+				AreaDistrict:     job.AreaDistrict,
+				BusinessDistrict: job.BusinessDistrict,
+				JobLabels:        job.JobLabels,
+				Skills:           job.Skills,
+				JobExperience:    job.JobExperience,
+				JobDegree:        job.JobDegree,
+				WelfareList:      job.WelfareList,
+			}
+			doc := rowData.ToDocument()
+			results = append(results, doc)
+		}
+
+		crawlerService.EmbeddingAndIndexDocs(ctx, results)
+
+		return nil
+	}
+
 	params := []*param.ParallelCrawlerParam{
-		/*
-			{
-				URL: urlBoss,
-				NetworkConfigs: []*param.ParallelNetworkConfig{
-					{
-						URLPattern:   urlPatternBoss,
-						RespChanSize: 100,
-						ToDocFunc:    toDocBoss,
-					},
+
+		{
+			URL: urlBoss,
+			NetworkConfigs: []*param.ParallelNetworkConfig{
+				{
+					URLPattern:  urlPatternBoss,
+					ProcessFunc: processFuncBoss,
 				},
-				Actions: scrollActions,
 			},
-		*/
+			Actions: scrollActions,
+		},
+
 		{
 			URL: urlBili,
 			NetworkConfigs: []*param.ParallelNetworkConfig{
 				{
-					URLPattern:   urlPatternBili,
-					RespChanSize: 100,
+					URLPattern: urlPatternBili,
 				},
 			},
 			Actions: scrollAndJsActions,
@@ -197,8 +200,7 @@ func main() {
 			URL: urlCnBlogs,
 			NetworkConfigs: []*param.ParallelNetworkConfig{
 				{
-					URLPattern:   urlPatternCnBlogs,
-					RespChanSize: 100,
+					URLPattern: urlPatternCnBlogs,
 				},
 			},
 			Actions: clickXAndJsActions,
