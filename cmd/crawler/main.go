@@ -103,10 +103,16 @@ func main() {
 	}
 
 	scrollAndJsActions := make([]param.Action, 0, 10)
+	clickXAndJsActions := make([]param.Action, 0, 10)
 
 	for i := range 5 {
 		scrollAndJsActions = append(scrollAndJsActions, scrollActions[i])
 		scrollAndJsActions = append(scrollAndJsActions, jsActions[i])
+	}
+
+	for i := range 5 {
+		clickXAndJsActions = append(clickXAndJsActions, clickXActions[i])
+		clickXAndJsActions = append(clickXAndJsActions, jsActions[i])
 	}
 
 	/*
@@ -187,17 +193,17 @@ func main() {
 			},
 			Actions: scrollAndJsActions,
 		},
-		/*
-			{
-				URL: urlCnBlogs,
-				NetworkConfigs: []*param.ParallelNetworkConfig{
-					{
-						URLPattern:   urlPatternCnBlogs,
-						RespChanSize: 100,
-					},
+		{
+			URL: urlCnBlogs,
+			NetworkConfigs: []*param.ParallelNetworkConfig{
+				{
+					URLPattern:   urlPatternCnBlogs,
+					RespChanSize: 100,
 				},
-				Actions: clickXActions,
 			},
+			Actions: clickXAndJsActions,
+		},
+		/*
 			{
 				URL: urlCsdn,
 				NetworkConfigs: []*param.ParallelNetworkConfig{
