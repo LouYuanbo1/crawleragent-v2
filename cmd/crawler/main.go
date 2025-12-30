@@ -101,6 +101,10 @@ func main() {
 						return getAllHrefLinks();
 					}
 				`,
+			ProcessFunc: func(ctx context.Context, content types.UrlContent) error {
+				log.Printf("执行JavaScript成功:%s, %d, %s", content.GetUrl(), len(content.GetContent()), string(content.GetContent()[:100]))
+				return nil
+			},
 		})
 	}
 
