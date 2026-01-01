@@ -1,4 +1,4 @@
-package crawlagent
+package service
 
 import (
 	"context"

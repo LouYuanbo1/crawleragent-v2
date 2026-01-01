@@ -25,6 +25,7 @@ type TypedEsClient interface {
 	BulkIndexDocsWithID(ctx context.Context, docs []model.Document) error
 	SearchStrDocsByVector(ctx context.Context, doc model.Document, queryVector []float32, k, numCandidates int) (string, error)
 	GetDoc(ctx context.Context, index string, id string) (model.Document, error)
+	GetDocsByQuery(ctx context.Context, index string, page, size int) ([]model.Document, error)
 	CountDocs(ctx context.Context, index string) (int64, error)
 	UpdateDoc(ctx context.Context, doc model.Document) error
 	DeleteDoc(ctx context.Context, index string, id string) error

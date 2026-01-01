@@ -5,6 +5,16 @@
   </div>
 </template>
 
+<script setup lang="ts">
+import { onMounted } from 'vue'
+import request from '../api/request'
+
+onMounted(async () => {
+  const resp = await request('/api/docs', 'GET')
+  console.log(resp)
+})
+</script>
+
 <style scoped>
 .home-page {
   padding: 20px;
