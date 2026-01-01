@@ -127,7 +127,7 @@ func main() {
 		log.Fatalf("初始化嵌入器失败: %v", err)
 	}
 
-	crawlerService := crawler.InitCrawlerService(parallelCrawler, embedder, typedClient, 5)
+	crawlerService := service.InitCrawlerService(parallelCrawler, embedder, typedClient, 5)
 
 	processFuncBoss := func(ctx context.Context, content types.UrlContent) error {
 		var jsonData struct {

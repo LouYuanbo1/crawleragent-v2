@@ -1,4 +1,4 @@
-package searchagent
+package service
 
 import (
 	"context"

@@ -199,6 +199,31 @@ func (tec *typedEsClient) GetDoc(ctx context.Context, index string, id string) (
 	return doc, nil
 }
 
+func (tec *typedEsClient) GetDocsByQuery(ctx context.Context, index string, page, size int) ([]model.Document, error) {
+	resp, err := tec.client.
+		Search().
+		Index(index).
+		From((page - 1) * size).
+		Size(size).
+		Do(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get docs by query from es: %s", err)
+	}
+	if resp.Hits.Total.Value == 0 {
+		log.Println("未找到符合查询条件的doc结果")
+		return nil, nil
+	}
+	docs := make([]model.Document, 0, resp.Hits.Total.Value)
+	for _, hit := range resp.Hits.Hits {
+		doc, err := model.UnmarshalDocument(index, hit.Source_)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal source: %s", err)
+		}
+		docs = append(docs, doc)
+	}
+	return docs, nil
+}
+
 func (tec *typedEsClient) CountDocs(ctx context.Context, index string) (int64, error) {
 	resp, err := tec.client.Count().Index(index).Do(ctx)
 	if err != nil {

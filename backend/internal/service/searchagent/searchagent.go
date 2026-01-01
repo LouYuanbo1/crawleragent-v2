@@ -1,4 +1,4 @@
-package searchagent
+package service
 
 import (
 	"context"
@@ -22,30 +22,30 @@ type State struct {
 	Embedder      embedding.Embedder
 }
 
-type SearchAgent interface {
+type SearchAgentService interface {
 	Stream(ctx context.Context, query string) error
 	Invoke(ctx context.Context, query string) error
 }
 
-type searchAgent struct {
+type searchAgentService struct {
 	llm      llm.LLM
 	es       es.TypedEsClient
 	embedder embedding.Embedder
 	graph    compose.Runnable[map[string]any, map[string]any]
 }
 
-func InitSearchAgent(
+func InitSearchAgentService(
 	ctx context.Context,
 	llm llm.LLM,
 	es es.TypedEsClient,
 	embedder embedding.Embedder,
 	param *param.Agent,
-) (SearchAgent, error) {
+) (SearchAgentService, error) {
 	graph, err := initAgentGraph(ctx, llm, es, embedder, param)
 	if err != nil {
 		return nil, fmt.Errorf("创建流程图失败: %w", err)
 	}
-	return &searchAgent{llm: llm, es: es, embedder: embedder, graph: graph}, nil
+	return &searchAgentService{llm: llm, es: es, embedder: embedder, graph: graph}, nil
 }
 
 // InitAgent 初始化AgentClient,根据options配置模型和节点
@@ -163,7 +163,7 @@ func initAgentGraph(
 
 }
 
-func (sa *searchAgent) Invoke(ctx context.Context, query string) error {
+func (sa *searchAgentService) Invoke(ctx context.Context, query string) error {
 	result, err := sa.graph.Invoke(ctx, map[string]any{
 		"query": query,
 	})
@@ -182,7 +182,7 @@ func (sa *searchAgent) Invoke(ctx context.Context, query string) error {
 	return nil
 }
 
-func (sa *searchAgent) Stream(ctx context.Context, query string) error {
+func (sa *searchAgentService) Stream(ctx context.Context, query string) error {
 	result, err := sa.graph.Stream(ctx, map[string]any{
 		"query": query,
 	})

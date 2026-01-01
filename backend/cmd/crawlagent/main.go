@@ -40,7 +40,7 @@ func main() {
 		schema.SystemMessage(`以下是监听的Json结果:\n{networkResponses}\n\n搜寻其中的内容并将内容填入schema中,如果Json中没有相关内容,忽略该字段。`),
 	)
 
-	agent, err := crawlagent.InitCrawlAgent(ctx, llm, crawler, prompt)
+	agent, err := service.InitCrawlAgentService(ctx, llm, crawler, prompt)
 	if err != nil {
 		log.Fatalf("初始化CrawlAgent失败: %v", err)
 	}

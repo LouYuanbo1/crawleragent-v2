@@ -1,4 +1,4 @@
-package crawlagent
+package service
 
 import (
 	"context"
@@ -15,24 +15,24 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
-type CrawlAgent interface {
+type CrawlAgentService interface {
 	Stream(ctx context.Context, url string, params param.AICrawlerParam) error
 	Invoke(ctx context.Context, url string, params param.AICrawlerParam) error
 }
 
-type crawlAgent struct {
+type crawlAgentService struct {
 	llm     llm.LLM
 	crawler ai.AICrawler
 	graph   compose.Runnable[map[string]any, map[string]any]
 }
 
-func InitCrawlAgent(ctx context.Context, llm llm.LLM, crawler ai.AICrawler, prompt *prompt.DefaultChatTemplate) (CrawlAgent, error) {
+func InitCrawlAgentService(ctx context.Context, llm llm.LLM, crawler ai.AICrawler, prompt *prompt.DefaultChatTemplate) (CrawlAgentService, error) {
 	graph, err := initAgentGraph(ctx, llm, crawler, prompt)
 	if err != nil {
 		log.Printf("创建流程图失败: %v", err)
 		return nil, fmt.Errorf("创建流程图失败: %w", err)
 	}
-	return &crawlAgent{llm: llm, crawler: crawler, graph: graph}, nil
+	return &crawlAgentService{llm: llm, crawler: crawler, graph: graph}, nil
 }
 
 func initAgentGraph(ctx context.Context, llm llm.LLM, crawler ai.AICrawler, prompt *prompt.DefaultChatTemplate) (compose.Runnable[map[string]any, map[string]any], error) {
@@ -84,7 +84,7 @@ func initAgentGraph(ctx context.Context, llm llm.LLM, crawler ai.AICrawler, prom
 	return compiledGraph, nil
 }
 
-func (c *crawlAgent) Invoke(ctx context.Context, url string, params param.AICrawlerParam) error {
+func (c *crawlAgentService) Invoke(ctx context.Context, url string, params param.AICrawlerParam) error {
 	result, err := c.graph.Invoke(ctx, map[string]any{
 		"url":    url,
 		"params": params,
@@ -104,7 +104,7 @@ func (c *crawlAgent) Invoke(ctx context.Context, url string, params param.AICraw
 	return nil
 }
 
-func (c *crawlAgent) Stream(ctx context.Context, url string, params param.AICrawlerParam) error {
+func (c *crawlAgentService) Stream(ctx context.Context, url string, params param.AICrawlerParam) error {
 	result, err := c.graph.Stream(ctx, map[string]any{
 		"url":    url,
 		"params": params,

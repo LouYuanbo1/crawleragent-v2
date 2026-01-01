@@ -7,7 +7,7 @@ import (
 	"crawleragent-v2/internal/infra/embedding"
 	"crawleragent-v2/internal/infra/llm"
 	"crawleragent-v2/internal/infra/persistence/es"
-	"crawleragent-v2/internal/service/searchagent"
+	service "crawleragent-v2/internal/service/searchagent"
 	"crawleragent-v2/param"
 	"fmt"
 	"log"
@@ -119,7 +119,7 @@ func main() {
 			param.PromptChatMode:  chatModePrompt,
 		},
 	}
-	agent, err := searchagent.InitSearchAgent(ctx,
+	agent, err := service.InitSearchAgentService(ctx,
 		llm,
 		typedClient,
 		embedder,
