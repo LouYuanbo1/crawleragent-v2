@@ -9,7 +9,6 @@ import (
 	"crawleragent-v2/internal/infra/persistence/es"
 	"crawleragent-v2/internal/service/searchagent"
 	"crawleragent-v2/param"
-	_ "embed"
 	"fmt"
 	"log"
 
@@ -17,18 +16,8 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
-//使用go:embed嵌入appconfig.json文件
-//下方注释重要,不能删除
-//在实际使用时，注意与文件名的对应，Github上保存的appconfig_example.json文件为样例，以实际为准,比如我这里是appconfig.json
-//When using it in practice, pay attention to the correspondence between the filename and the actual filename.
-//The appconfig_example.json file saved on GitHub is just an example;
-//use your own file, for example, mine is appconfig.json.
-
-//go:embed appconfig/appconfig.json
-var appConfig []byte
-
 func main() {
-	appcfg, err := config.ParseConfig(appConfig)
+	appcfg, err := config.InitConfig()
 	if err != nil {
 		log.Fatalf("解析配置失败: %v", err)
 	}

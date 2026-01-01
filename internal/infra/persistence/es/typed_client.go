@@ -32,7 +32,7 @@ func InitTypedEsClient(cfg *config.Config, esSemSize int) (TypedEsClient, error)
 		Username: cfg.Elasticsearch.Username,
 		Password: cfg.Elasticsearch.Password,
 		Addresses: []string{
-			cfg.Elasticsearch.Address,
+			fmt.Sprintf("%s:%d", cfg.Elasticsearch.Host, cfg.Elasticsearch.Port),
 		},
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost:   10,
