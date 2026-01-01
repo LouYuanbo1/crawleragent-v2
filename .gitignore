@@ -32,8 +32,8 @@ go.work.sum
 # .vscode/
 
 #Chrome user data dir
-cmd/crawlagent/user_data_dir/
-cmd/crawler/user_data_dir/
+backend/cmd/crawlagent/user_data_dir/
+backend/cmd/crawler/user_data_dir/
 
 #App config file
-config/config.yaml
+backend/config/config.yaml
