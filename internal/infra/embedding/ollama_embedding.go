@@ -5,7 +5,6 @@ import (
 	"crawleragent-v2/internal/config"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/cloudwego/eino-ext/components/embedding/ollama"
@@ -22,7 +21,7 @@ type embedding struct {
 func InitEmbedder(ctx context.Context, cfg *config.Config, batchSize int, embedSemSize int) (Embedder, error) {
 	model, err := ollama.NewEmbedder(ctx, &ollama.EmbeddingConfig{
 		Model:   cfg.Embedding.Model,
-		BaseURL: cfg.Embedding.Host + ":" + strconv.Itoa(cfg.Embedding.Port),
+		BaseURL: fmt.Sprintf("%s:%d", cfg.Embedding.Host, cfg.Embedding.Port),
 	})
 	if err != nil {
 		return nil, err

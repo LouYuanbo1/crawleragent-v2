@@ -7,7 +7,6 @@ import (
 	"crawleragent-v2/internal/infra/llm"
 	"crawleragent-v2/internal/service/crawlagent"
 	"crawleragent-v2/param"
-	_ "embed"
 	"log"
 	"time"
 
@@ -15,11 +14,8 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
-//go:embed appconfig/appconfig.json
-var appConfig []byte
-
 func main() {
-	cfg, err := config.ParseConfig(appConfig)
+	cfg, err := config.InitConfig()
 	if err != nil {
 		log.Fatalf("解析配置文件失败: %v", err)
 	}

@@ -11,15 +11,11 @@ import (
 	"crawleragent-v2/internal/service/crawler"
 	"crawleragent-v2/param"
 	"crawleragent-v2/types"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 )
-
-//go:embed appconfig/appconfig.json
-var appConfig []byte
 
 var (
 	urlBoss           = "https://www.zhipin.com/web/geek/jobs?city=100010000&salary=406&experience=102&query=golang"
@@ -34,7 +30,7 @@ var (
 )
 
 func main() {
-	appcfg, err := config.ParseConfig(appConfig)
+	appcfg, err := config.InitConfig()
 	if err != nil {
 		log.Fatalf("解析配置失败: %v", err)
 	}
