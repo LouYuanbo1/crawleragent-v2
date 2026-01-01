@@ -2,7 +2,7 @@ package crawler
 
 import (
 	"context"
-	"crawleragent-v2/internal/domain/model"
+	"crawleragent-v2/internal/data/model"
 	"crawleragent-v2/param"
 )
 

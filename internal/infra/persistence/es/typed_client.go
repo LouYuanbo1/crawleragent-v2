@@ -3,7 +3,7 @@ package es
 import (
 	"context"
 	"crawleragent-v2/internal/config"
-	"crawleragent-v2/internal/domain/model"
+	"crawleragent-v2/internal/data/model"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"

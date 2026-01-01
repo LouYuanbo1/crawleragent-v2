@@ -1,7 +1,7 @@
 package param
 
 import (
-	"crawleragent-v2/internal/domain/model"
+	"crawleragent-v2/internal/data/model"
 	"time"
 
 	"github.com/cloudwego/eino-ext/components/tool/duckduckgo/v2"

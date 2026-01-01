@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"crawleragent-v2/internal/config"
-	"crawleragent-v2/internal/domain/model"
+	"crawleragent-v2/internal/data/model"
 	"crawleragent-v2/internal/infra/embedding"
 	"crawleragent-v2/internal/infra/llm"
 	"crawleragent-v2/internal/infra/persistence/es"

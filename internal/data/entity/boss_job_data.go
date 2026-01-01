@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"crawleragent-v2/internal/domain/model"
+	"crawleragent-v2/internal/data/model"
 	"fmt"
 )
 
