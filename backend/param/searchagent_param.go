@@ -1,18 +1,9 @@
 package param
 
 import (
-	"crawleragent-v2/internal/data/model"
 	"time"
 
 	"github.com/cloudwego/eino-ext/components/tool/duckduckgo/v2"
-	"github.com/cloudwego/eino/components/prompt"
-)
-
-type PromptType string
-
-const (
-	PromptEsRAGMode PromptType = "EsRAGMode"
-	PromptChatMode  PromptType = "ChatMode"
 )
 
 type SearchConfig struct {
@@ -22,7 +13,12 @@ type SearchConfig struct {
 }
 
 type Agent struct {
-	Doc              model.Document
-	Prompt           map[PromptType]*prompt.DefaultChatTemplate
 	DuckDuckGoSearch SearchConfig
+}
+
+type QueryWithPrompt struct {
+	Index           string `json:"index"`
+	Query           string `json:"query"`
+	PromptEsRAGMode string `json:"promptEsRAGMode"`
+	PromptChatMode  string `json:"promptChatMode"`
 }
