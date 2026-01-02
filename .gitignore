@@ -34,6 +34,7 @@ go.work.sum
 #Chrome user data dir
 backend/cmd/crawlagent/user_data_dir/
 backend/cmd/crawler/user_data_dir/
+backend/cmd/gui/user_data_dir/
 
 #App config file
 backend/config/config.yaml
