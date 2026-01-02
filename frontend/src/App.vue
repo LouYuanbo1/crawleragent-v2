@@ -4,7 +4,7 @@
 <template>
   <div class="top-nav">
     <router-link :to="{ name: 'Home' }" class="nav-item">首页</router-link>
-    <router-link :to="{ name: 'Setting' }" class="nav-item">设置</router-link>
+    <router-link :to="{ name: 'BossJob' }" class="nav-item">Boss直聘岗位</router-link>
   </div>
   <div class="router-view-container">
     <router-view></router-view>

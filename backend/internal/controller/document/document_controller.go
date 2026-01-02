@@ -21,7 +21,7 @@ func (dc *DocumentController) RegisterRoutes(r *gin.Engine) {
 	group := r.Group("/api/documents")
 	{
 		group.GET("/:index", dc.GetDocsByPages)
-		group.GET("/indices", dc.GetAllIndices)
+		group.GET("/indices", dc.GetMapIndexCount)
 	}
 }
 
@@ -30,14 +30,14 @@ type GetDocsByPagesReq struct {
 	Size int `form:"size" binding:"required"`
 }
 
-func (dc *DocumentController) GetAllIndices(gctx *gin.Context) {
+func (dc *DocumentController) GetMapIndexCount(gctx *gin.Context) {
 	ctx := gctx.Request.Context()
-	indices, err := dc.typedClient.GetAllIndices(ctx)
+	mapIndexCount, err := dc.typedClient.GetMapIndexCount(ctx)
 	if err != nil {
-		gctx.JSON(500, gin.H{"code": 500, "msg": fmt.Sprintf("failed to get all indices: %s", err.Error()), "data": nil})
+		gctx.JSON(500, gin.H{"code": 500, "msg": fmt.Sprintf("failed to get map index count: %s", err.Error()), "data": nil})
 		return
 	}
-	gctx.JSON(200, gin.H{"code": 200, "msg": "success", "data": indices})
+	gctx.JSON(200, gin.H{"code": 200, "msg": "success", "data": mapIndexCount})
 }
 
 func (dc *DocumentController) GetDocsByPages(gctx *gin.Context) {

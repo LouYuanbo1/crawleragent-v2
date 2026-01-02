@@ -182,20 +182,20 @@ func (tec *typedEsClient) BulkIndexDocsWithID(ctx context.Context, docs []model.
 	return nil
 }
 
-func (tec *typedEsClient) GetAllIndices(ctx context.Context) ([]string, error) {
+func (tec *typedEsClient) GetMapIndexCount(ctx context.Context) (map[string]string, error) {
 	resp, err := tec.client.Cat.Indices().Do(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all indices from es: %s", err)
 	}
-	indices := make([]string, 0, len(resp))
+	mapIndiceCount := make(map[string]string, len(resp))
 	for _, index := range resp {
 		indexName := *index.Index
 		if !strings.HasPrefix(indexName, ".") {
-			indices = append(indices, indexName)
+			mapIndiceCount[indexName] = *index.DocsCount
 			log.Println("index: ", indexName)
 		}
 	}
-	return indices, nil
+	return mapIndiceCount, nil
 }
 
 func (tec *typedEsClient) GetDoc(ctx context.Context, index string, id string) (model.Document, error) {

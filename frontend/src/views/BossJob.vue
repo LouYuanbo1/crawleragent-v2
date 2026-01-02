@@ -1,9 +1,9 @@
 <template>
-  <div class="generic-document-page">
+  <div class="boss-job-page">
     <!-- 头部筛选区域 -->
     <div class="header-section">
       <div class="title-section">
-        <h1>通用文档查看器</h1>
+        <h1>文档管理(专为Boss直聘信息使用)</h1>
         <p class="subtitle">选择文档索引以查看相关文档列表</p>
       </div>
       
@@ -54,11 +54,11 @@
     <!-- 文档统计 -->
     <div class="stats-section" v-if="docs.length > 0">
       <div class="stat-card">
-        <div class="stat-value">{{ totalDocs || 0 }}</div>
+        <div class="stat-value">{{ mapIndexCount[selectedIndex] || 0 }}</div>
         <div class="stat-label">总文档数</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">{{ Math.min((page - 1) * size + 1, totalDocs) }} - {{ Math.min((page - 1) * size + docs.length, totalDocs) }}</div>
+        <div class="stat-value">{{(page - 1) * size + 1}} - {{(page - 1) * size  + docs.length}}</div>
         <div class="stat-label">当前文档</div>
       </div>
       <div class="stat-card">
@@ -73,12 +73,7 @@
 
     <!-- 文档列表 -->
     <div class="document-list-container">
-      <div v-if="loading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">加载中...</div>
-      </div>
-
-      <div v-else-if="docs.length === 0" class="empty-state">
+      <div v-if="docs.length === 0" class="empty-state">
         <div class="empty-icon">📄</div>
         <div class="empty-title">暂无文档数据</div>
         <div class="empty-desc">
@@ -89,58 +84,134 @@
       <div v-else class="document-grid">
         <div 
           v-for="(doc, index) in docs" 
-          :key="doc.id || index" 
+          :key="doc.encryptJobId || index" 
           class="document-card"
         >
+          <!-- 文档头部 -->
           <div class="card-header">
-            <div class="document-title">
-              <h3 class="doc-title">
-                {{ getDocumentTitle(doc) || '未命名文档' }}
-                <span class="doc-id">#{{ doc.id || index + 1 }}</span>
+            <div class="job-title-section">
+              <h3 class="job-title">
+                {{ doc.jobName || '未命名文档' }}
+                <span v-if="doc.salaryDesc" class="salary-tag">
+                  {{ doc.salaryDesc }}
+                </span>
               </h3>
+              <div class="company-info">
+                <span class="company-name">{{ doc.brandName || '未知公司' }}</span>
+                <span class="company-size">{{ doc.brandScaleName }}</span>
+              </div>
             </div>
-            <div class="card-actions">
-              <button class="copy-btn" @click="copyDocumentInfo(doc)">
-                <span class="icon">📋</span> 复制JSON
-              </button>
-              <button class="expand-btn" @click="toggleExpand(index)">
-                <span class="icon">{{ expandedDocs.includes(index) ? '▼' : '▶' }}</span> 
-                {{ expandedDocs.includes(index) ? '收起' : '展开' }}
-              </button>
+            <div class="location-info">
+              <span class="location-icon">📍</span>
+              <span class="location-text">
+                {{ doc.cityName || '未知城市' }}
+                <span v-if="doc.areaDistrict">- {{ doc.areaDistrict }}</span>
+              </span>
             </div>
           </div>
 
-          <!-- JSON树形视图 -->
-          <div v-if="expandedDocs.includes(index)" class="json-viewer-container">
-            <!-- 使用简单的预格式化的JSON显示，替代vue3-json-viewer -->
-            <pre class="json-display">{{ formatJson(doc) }}</pre>
+          <!-- 标签区域 -->
+          <div class="tags-section" v-if="doc.jobLabels && doc.jobLabels.length">
+            <div class="section-label">标签：</div>
+            <div class="tags-list">
+              <span 
+                v-for="label in doc.jobLabels" 
+                :key="label" 
+                class="tag"
+                :class="getTagClass(label)"
+              >
+                {{ label }}
+              </span>
+            </div>
           </div>
 
-          <!-- 简要预览 -->
-          <div v-else class="preview-section">
-            <div class="preview-grid">
-              <div v-for="(value, key) in getPreviewFields(doc)" :key="key" class="preview-item">
-                <div class="preview-key">{{ formatKey(key) }}</div>
-                <div class="preview-value">{{ formatValue(value) }}</div>
+          <!-- 技能要求 -->
+          <div class="skills-section" v-if="doc.skills && doc.skills.length">
+            <div class="section-label">技能要求：</div>
+            <div class="skills-list">
+              <span 
+                v-for="skill in doc.skills" 
+                :key="skill" 
+                class="skill-tag"
+              >
+                {{ skill }}
+              </span>
+            </div>
+          </div>
+
+          <!-- 福利待遇 -->
+          <div class="welfare-section" v-if="doc.welfareList && doc.welfareList.length">
+            <div class="section-label">福利待遇：</div>
+            <div class="welfare-list">
+              <span 
+                v-for="welfare in doc.welfareList.slice(0, 4)" 
+                :key="welfare" 
+                class="welfare-tag"
+              >
+                {{ welfare }}
+              </span>
+              <span 
+                v-if="doc.welfareList.length > 4" 
+                class="more-tag"
+                @click="toggleWelfare(index)"
+              >
+                +{{ doc.welfareList.length - 4 }} 项福利
+              </span>
+            </div>
+            <!-- 展开的福利列表 -->
+            <div 
+              v-if="expandedWelfare.includes(index)" 
+              class="welfare-expanded"
+            >
+              <div class="expanded-list">
+                <span 
+                  v-for="welfare in doc.welfareList" 
+                  :key="welfare" 
+                  class="welfare-tag"
+                >
+                  {{ welfare }}
+                </span>
               </div>
             </div>
           </div>
 
+          <!-- 其他信息 -->
+          <div class="other-info">
+            <div class="info-row">
+              <span class="info-label">经验要求：</span>
+              <span class="info-value">{{ doc.jobExperience || '不限' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">学历要求：</span>
+              <span class="info-value">{{ doc.jobDegree || '不限' }}</span>
+            </div>
+            <div v-if="doc.businessDistrict" class="info-row">
+              <span class="info-label">商圈：</span>
+              <span class="info-value">{{ doc.businessDistrict }}</span>
+            </div>
+          </div>
+
+          <!-- 操作按钮 -->
           <div class="card-footer">
-            <button class="detail-btn" @click="toggleExpand(index)">
-              {{ expandedDocs.includes(index) ? '收起详情' : '展开详情' }}
-            </button>
+            <a 
+              :href="doc.detailAddress" 
+              target="_blank" 
+              class="detail-btn"
+              v-if="doc.detailAddress"
+            >
+              查看详情
+            </a>
             <button class="copy-btn" @click="copyDocumentInfo(doc)">
-              复制完整JSON
+              复制信息
             </button>
           </div>
         </div>
       </div>
 
       <!-- 底部分页控制 -->
-      <div v-if="docs.length > 0 && !loading" class="pagination-bottom">
+      <div v-if="docs.length > 0" class="pagination-bottom">
         <div class="page-info">
-          第 {{ page }} 页，每页 {{ size }} 条，共 {{ totalDocs || 0 }} 条
+          第 {{ page }} 页，每页 {{ size }} 条，共 {{ mapIndexCount[selectedIndex] || 0 }} 条
         </div>
         <div class="page-buttons">
           <button @click="prevPage" :disabled="page <= 1" class="page-btn">
@@ -167,12 +238,11 @@ const docs = ref<any[]>([])
 const page = ref(1)
 const size = ref(10)
 const loading = ref(false)
-const expandedDocs = ref<number[]>([])
-const totalDocs = ref(0)
+const expandedWelfare = ref<number[]>([])
+const totalDocs = ref(0) // 总文档数
 
-// 计算属性：判断是否还有更多数据（修正逻辑）
+// 计算属性：判断是否还有更多数据
 const hasMoreData = computed(() => {
-  if (totalDocs.value === 0) return false
   return totalDocs.value > page.value * size.value
 })
 
@@ -184,13 +254,10 @@ const toggleDropdown = () => {
 const selectOption = (index: string) => {
   selectedIndex.value = index
   isOpen.value = false
-  page.value = 1
-  docs.value = []
-  expandedDocs.value = []
-  totalDocs.value = 0
-  if (index) {
-    getDocumentList(page.value, size.value)
-  }
+  page.value = 1 // 重置页码
+  docs.value = [] // 清空当前文档
+  expandedWelfare.value = [] // 清空展开状态
+  totalDocs.value = 0 // 重置总文档数
 }
 
 const handleClickOutside = (event: MouseEvent) => {
@@ -202,80 +269,38 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 }
 
-const toggleExpand = (index: number) => {
-  const idx = expandedDocs.value.indexOf(index)
+const getTagClass = (label: string) => {
+  const classes: Record<string, string> = {
+    '在校/应届': 'tag-intern',
+    '本科': 'tag-degree',
+    '硕士': 'tag-master'
+  }
+  return classes[label] || 'tag-default'
+}
+
+const toggleWelfare = (index: number) => {
+  const idx = expandedWelfare.value.indexOf(index)
   if (idx > -1) {
-    expandedDocs.value.splice(idx, 1)
+    expandedWelfare.value.splice(idx, 1)
   } else {
-    expandedDocs.value.push(index)
-  }
-}
-
-const getDocumentTitle = (doc: any): string => {
-  // 智能获取文档标题，尝试常见字段
-  const titleFields = ['title', 'name', 'jobName', 'brandName', 'documentName', 'fileName' ,'Name']
-  for (const field of titleFields) {
-    if (doc[field] && typeof doc[field] === 'string') {
-      return doc[field]
-    }
-  }
-  return '未命名文档'
-}
-
-const getPreviewFields = (doc: any): Record<string, any> => {
-  if (!doc || typeof doc !== 'object') {
-    return {}
-  }
-  
-  // 获取前几个字段作为预览
-  const previewFields: Record<string, any> = {}
-  const keys = Object.keys(doc).filter(key => 
-    !['id', '_id', 'createdAt', 'updatedAt', 'encryptJobId'].includes(key)
-  )
-  
-  // 只取前4个有效字段
-  const previewKeys = keys.slice(0, 4)
-  
-  for (const key of previewKeys) {
-    // 确保 key 是有效的字符串
-    if (typeof key === 'string' && key.trim()) {
-      previewFields[key] = doc[key]
-    }
-  }
-  
-  return previewFields
-}
-
-const formatKey = (key: string): string => {
-  // 格式化键名，下划线转空格，首字母大写
-  return key.replace(/_/g, ' ')
-            .replace(/\b\w/g, c => c.toUpperCase())
-}
-
-const formatValue = (value: any): string => {
-  if (value === null || value === undefined) return '空'
-  if (typeof value === 'string' && value.length > 30) {
-    return value.substring(0, 30) + '...'
-  }
-  if (typeof value === 'object') {
-    return typeof value === 'function' ? 'Function' : 'Object'
-  }
-  return String(value)
-}
-
-const formatJson = (json: any): string => {
-  try {
-    return JSON.stringify(json, null, 2)
-  } catch (e) {
-    return String(json)
+    expandedWelfare.value.push(index)
   }
 }
 
 const copyDocumentInfo = async (doc: any) => {
+  const info = `
+职位名称: ${doc.jobName || '无'}
+公司: ${doc.brandName || '无'}
+薪资: ${doc.salaryDesc || '面议'}
+地点: ${doc.cityName || '无'}${doc.areaDistrict ? ` - ${doc.areaDistrict}` : ''}
+经验要求: ${doc.jobExperience || '不限'}
+学历要求: ${doc.jobDegree || '不限'}
+技能要求: ${doc.skills?.join('、') || '无'}
+  `.trim()
+  
   try {
-    const jsonString = JSON.stringify(doc, null, 2)
-    await navigator.clipboard.writeText(jsonString)
-    alert('文档JSON已复制到剪贴板！')
+    await navigator.clipboard.writeText(info)
+    alert('职位信息已复制到剪贴板！')
   } catch (err) {
     console.error('复制失败:', err)
     alert('复制失败，请手动复制')
@@ -305,8 +330,6 @@ const getDocumentList = async (pageNum: number, pageSize: number) => {
   }
   
   loading.value = true
-  expandedDocs.value = [] // 每次加载新数据时清空展开状态
-  
   try {
     const response = await request({
       url: `/api/documents/${selectedIndex.value}`,
@@ -318,9 +341,17 @@ const getDocumentList = async (pageNum: number, pageSize: number) => {
     })
     
     if (response.code === 200 && Array.isArray(response.data)) {
+      // 直接更新文档列表，而不是追加
       docs.value = response.data
-      // 假设返回中有total字段，如果没有则使用mapIndexCount中的值
-      totalDocs.value = response.total || parseInt(mapIndexCount.value[selectedIndex.value] || '0', 10) || response.data.length
+      // 如果有分页信息，更新总文档数
+      if (response.total !== undefined) {
+        totalDocs.value = response.total
+      } else {
+        // 如果API没有返回总数，假设还有更多数据
+        totalDocs.value = response.data.length < pageSize ? 
+          (pageNum - 1) * pageSize + response.data.length : 
+          pageNum * pageSize + 1
+      }
     } else {
       console.error('返回数据格式错误:', response)
       docs.value = []
@@ -371,8 +402,53 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 保持原有样式，添加JSON查看器相关样式 */
-.generic-document-page {
+/* 添加底部分页样式 */
+.pagination-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #eee;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.pagination-bottom .page-info {
+  color: #666;
+  font-size: 14px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.pagination-bottom .page-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.pagination-bottom .page-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.pagination-bottom .page-btn:hover:not(:disabled) {
+  border-color: #4a6cf7;
+  color: #4a6cf7;
+}
+
+.pagination-bottom .page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 原有CSS保持不变 */
+.boss-job-page {
   padding: 24px;
   max-width: 1200px;
   margin: 0 auto;
@@ -548,32 +624,6 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-/* 加载状态 */
-.loading-state {
-  text-align: center;
-  padding: 60px 20px;
-}
-
-.loading-spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #4a6cf7;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 16px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-text {
-  color: #666;
-  font-size: 16px;
-}
-
 /* 统计区域 */
 .stats-section {
   display: flex;
@@ -664,11 +714,11 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.document-title {
+.job-title-section {
   flex: 1;
 }
 
-.doc-title {
+.job-title {
   margin: 0 0 8px 0;
   font-size: 18px;
   font-weight: 600;
@@ -679,76 +729,170 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
-.doc-id {
-  color: #666;
+.salary-tag {
+  background: linear-gradient(135deg, #4a6cf7, #6a8cff);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.company-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
+}
+
+.company-name {
+  color: #333;
+  font-weight: 500;
+}
+
+.company-size {
+  color: #666;
   background: #f5f5f5;
   padding: 2px 6px;
   border-radius: 4px;
-}
-
-.card-actions {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.icon {
-  margin-right: 4px;
-}
-
-/* JSON查看器样式 */
-.json-viewer-container {
-  border: 1px solid #eee;
-  border-radius: 8px;
-  padding: 16px;
-  background: #fafafa;
-  max-height: 400px;
-  overflow: auto;
-  margin: 8px 0;
-}
-
-.json-display {
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 13px;
-  line-height: 1.4;
-  color: #333;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-/* 预览区域 */
-.preview-section {
-  background: #fafafa;
-  border-radius: 8px;
-  padding: 16px;
-  margin: 8px 0;
-}
-
-.preview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
-}
-
-.preview-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.preview-key {
-  font-weight: 500;
-  color: #666;
   font-size: 12px;
-  text-transform: uppercase;
 }
 
-.preview-value {
-  color: #333;
+.location-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #666;
   font-size: 14px;
-  word-break: break-all;
+  white-space: nowrap;
+}
+
+.location-icon {
+  font-size: 12px;
+}
+
+/* 标签区域 */
+.section-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.tags-section,
+.skills-section,
+.welfare-section {
+  margin-top: 4px;
+}
+
+.tags-list,
+.skills-list,
+.welfare-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tag-intern {
+  background: #e6f7ff;
+  color: #1890ff;
+  border: 1px solid #91d5ff;
+}
+
+.tag-degree {
+  background: #f6ffed;
+  color: #52c41a;
+  border: 1px solid #b7eb8f;
+}
+
+.tag-master {
+  background: #fff7e6;
+  color: #fa8c16;
+  border: 1px solid #ffd591;
+}
+
+.tag-default {
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #d9d9d9;
+}
+
+.skill-tag {
+  padding: 4px 10px;
+  background: #f0f7ff;
+  color: #4a6cf7;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #d6e4ff;
+}
+
+.welfare-tag {
+  padding: 4px 10px;
+  background: #fff0f6;
+  color: #eb2f96;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid #ffadd2;
+}
+
+.more-tag {
+  padding: 4px 10px;
+  background: #f5f5f5;
+  color: #666;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #d9d9d9;
+  transition: all 0.2s;
+}
+
+.more-tag:hover {
+  background: #e8e8e8;
+}
+
+.welfare-expanded {
+  margin-top: 8px;
+}
+
+.expanded-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed #eee;
+}
+
+/* 其他信息 */
+.other-info {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 4px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.info-label {
+  color: #666;
+}
+
+.info-value {
+  color: #333;
+  font-weight: 500;
 }
 
 /* 卡片底部 */
@@ -799,34 +943,9 @@ onUnmounted(() => {
   transform: translateY(-1px);
 }
 
-/* 底部分页样式 */
-.pagination-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #eee;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.pagination-bottom .page-info {
-  color: #666;
-  font-size: 14px;
-  padding: 8px 12px;
-  background: #f8f9fa;
-  border-radius: 6px;
-}
-
-.pagination-bottom .page-buttons {
-  display: flex;
-  gap: 8px;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .generic-document-page {
+  .boss-job-page {
     padding: 16px;
   }
   
