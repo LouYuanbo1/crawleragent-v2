@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"crawleragent-v2/internal/data/model"
+	"crawleragent-v2/internal/infra/embedding"
+	"crawleragent-v2/internal/infra/persistence/es"
 	"crawleragent-v2/param"
 	"encoding/json"
 	"errors"
@@ -47,7 +50,7 @@ func BranchCondition(ctx context.Context, state map[string]any) (string, error) 
 }
 
 // Retriever 检索节点,用于根据用户查询意图,从索引中检索相关文档
-func Retriever() *compose.Lambda {
+func Retriever(embedder embedding.Embedder, typedEsClient es.TypedEsClient) *compose.Lambda {
 	return compose.InvokableLambda(func(ctx context.Context, state map[string]any) (map[string]any, error) {
 		query, ok := state["query"].(string)
 		if !ok {
@@ -56,30 +59,33 @@ func Retriever() *compose.Lambda {
 		fmt.Printf("query: %s", query)
 		var embeddings [][]float32
 		var err error
-		err = compose.ProcessState(ctx, func(ctx context.Context, s *State) error {
-			log.Printf("query: %s", query)
-			embeddings, err = s.Embedder.Embed(ctx, []string{query})
-			if err != nil {
-				return err
-			}
-
-			if len(embeddings) == 0 || len(embeddings[0]) == 0 {
-				return errors.New("嵌入结果为空，无法进行向量检索")
-			}
-
-			embedding := embeddings[0]
-
-			docsStr, err := s.TypedEsClient.SearchStrDocsByVector(ctx, s.Doc, embedding, 5, 100)
-			if err != nil {
-				return err
-			}
-
-			state["referenceDocs"] = docsStr
-			return nil
-		})
+		log.Printf("query: %s", query)
+		embeddings, err = embedder.Embed(ctx, []string{query})
 		if err != nil {
 			return nil, err
 		}
+
+		if len(embeddings) == 0 || len(embeddings[0]) == 0 {
+			return nil, errors.New("嵌入结果为空，无法进行向量检索")
+		}
+
+		embedding := embeddings[0]
+
+		index, ok := state["index"].(string)
+		if !ok {
+			return nil, errors.New("index not found in state")
+		}
+		doc, err := model.IndexToDoc(index)
+		if err != nil {
+			return nil, err
+		}
+
+		docsStr, err := typedEsClient.SearchStrDocsByVector(ctx, doc, embedding, 5, 100)
+		if err != nil {
+			return nil, err
+		}
+
+		state["referenceDocs"] = docsStr
 
 		return state, nil
 	})

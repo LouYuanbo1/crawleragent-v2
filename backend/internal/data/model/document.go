@@ -29,3 +29,10 @@ func UnmarshalDocument(index string, data []byte) (Document, error) {
 		return nil, fmt.Errorf("unknown document type: %s", index)
 	}
 }
+
+func IndexToDoc(index string) (Document, error) {
+	if index == "boss_jobs" {
+		return &BossJobDoc{}, nil
+	}
+	return nil, fmt.Errorf("index %s not supported", index)
+}

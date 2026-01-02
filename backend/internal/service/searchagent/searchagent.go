@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"crawleragent-v2/internal/data/model"
 	"crawleragent-v2/internal/infra/embedding"
 	"crawleragent-v2/internal/infra/llm"
 	"crawleragent-v2/internal/infra/persistence/es"
@@ -12,19 +11,22 @@ import (
 	"io"
 	"log"
 
+	"github.com/cloudwego/eino/components/prompt"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
 )
 
+/*
 type State struct {
 	Doc           model.Document
 	TypedEsClient es.TypedEsClient
 	Embedder      embedding.Embedder
 }
+*/
 
 type SearchAgentService interface {
-	Stream(ctx context.Context, query string) error
-	Invoke(ctx context.Context, query string) error
+	Stream(ctx context.Context, query *param.QueryWithPrompt) error
+	Invoke(ctx context.Context, query *param.QueryWithPrompt) error
 }
 
 type searchAgentService struct {
@@ -56,16 +58,18 @@ func initAgentGraph(
 	embedder embedding.Embedder,
 	param *param.Agent,
 ) (compose.Runnable[map[string]any, map[string]any], error) {
-	// 生成State,包含索引名称, TypedEsClient, Embedder 等状态信息
-	genState := func(ctx context.Context) *State {
-		return &State{
-			Doc:           param.Doc,
-			TypedEsClient: typedEsClient,
-			Embedder:      embedder,
+	/*
+		// 生成State,包含索引名称, TypedEsClient, Embedder 等状态信息
+		genState := func(ctx context.Context) *State {
+			return &State{
+				Doc:           param.Doc,
+				TypedEsClient: typedEsClient,
+				Embedder:      embedder,
+			}
 		}
-	}
 
-	fmt.Printf("genState: %+v\n", genState(ctx))
+		fmt.Printf("genState: %+v\n", genState(ctx))
+	*/
 
 	duckDuckGoTool, err := InitDuckDuckGo(ctx, param)
 	if err != nil {
@@ -73,7 +77,8 @@ func initAgentGraph(
 	}
 
 	// 初始化Compose图,设置全局状态生成函数
-	graph := compose.NewGraph[map[string]any, map[string]any](compose.WithGenLocalState(genState))
+	//graph := compose.NewGraph[map[string]any, map[string]any](compose.WithGenLocalState(genState))
+	graph := compose.NewGraph[map[string]any, map[string]any]()
 	// 添加意图检测节点,用于识别用户查询的意图,当用户输入以查询模式或搜索模式开头时,将意图设置为"retriever",
 	// 使用爬取的信息做RAG增强
 	err = graph.AddLambdaNode("intentDetection", IntentDetection())
@@ -82,13 +87,21 @@ func initAgentGraph(
 		return nil, err
 	}
 	// 添加检索节点,用于根据用户查询意图,从索引中检索相关文档
-	err = graph.AddLambdaNode("retriever", Retriever())
+	err = graph.AddLambdaNode("retriever", Retriever(embedder, typedEsClient))
 	if err != nil {
 		log.Printf("Error adding lambda node: %v", err)
 		return nil, err
 	}
+
+	promptEsRAGMode := prompt.FromMessages(
+		schema.FString,
+		schema.SystemMessage(`{promptEsRAGMode}`),
+		schema.SystemMessage(`以下是根据您的查询检索到的信息：\n{referenceDocs}\n\n请严格展示这些信息,不要编造或添加任何额外信息。如果知识库为空,则直接回答:当前知识库中暂无完全匹配的结果。`),
+		schema.UserMessage(`{query}`),
+	)
+
 	// 添加搜索模式提示节点,用于根据用户查询意图,生成搜索模式的提示
-	err = graph.AddChatTemplateNode("searchModePrompt", param.Prompt["EsRAGMode"])
+	err = graph.AddChatTemplateNode("searchModePrompt", promptEsRAGMode)
 	if err != nil {
 		log.Printf("Error adding prompt template node: %v", err)
 		return nil, err
@@ -100,8 +113,15 @@ func initAgentGraph(
 		return nil, err
 	}
 
+	promptChatMode := prompt.FromMessages(
+		schema.FString,
+		schema.SystemMessage(`{promptChatMode}`),
+		schema.SystemMessage(`以下是根据您经过网络查询得到的信息：\n{duckDuckGoResults}\n\n请结合这些信息回答用户的请求。`),
+		schema.UserMessage(`{query}`),
+	)
+
 	// 添加聊天模式提示节点,用于根据用户查询意图,生成聊天模式的提示
-	err = graph.AddChatTemplateNode("chatModePrompt", param.Prompt["ChatMode"])
+	err = graph.AddChatTemplateNode("chatModePrompt", promptChatMode)
 	if err != nil {
 		log.Printf("Error adding prompt template node: %v", err)
 		return nil, err
@@ -163,9 +183,12 @@ func initAgentGraph(
 
 }
 
-func (sa *searchAgentService) Invoke(ctx context.Context, query string) error {
+func (sa *searchAgentService) Invoke(ctx context.Context, query *param.QueryWithPrompt) error {
 	result, err := sa.graph.Invoke(ctx, map[string]any{
-		"query": query,
+		"index":           query.Index,
+		"query":           query.Query,
+		"promptEsRAGMode": query.PromptEsRAGMode,
+		"promptChatMode":  query.PromptChatMode,
 	})
 	if err != nil {
 		log.Printf("Failed to invoke graph: %v", err)
@@ -182,9 +205,12 @@ func (sa *searchAgentService) Invoke(ctx context.Context, query string) error {
 	return nil
 }
 
-func (sa *searchAgentService) Stream(ctx context.Context, query string) error {
+func (sa *searchAgentService) Stream(ctx context.Context, query *param.QueryWithPrompt) error {
 	result, err := sa.graph.Stream(ctx, map[string]any{
-		"query": query,
+		"index":           query.Index,
+		"query":           query.Query,
+		"promptEsRAGMode": query.PromptEsRAGMode,
+		"promptChatMode":  query.PromptChatMode,
 	})
 	if err != nil {
 		log.Printf("Failed to invoke graph: %v", err)
