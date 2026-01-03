@@ -26,7 +26,7 @@ type State struct {
 
 type SearchAgentService interface {
 	Stream(ctx context.Context, query *param.QueryWithPrompt) error
-	Invoke(ctx context.Context, query *param.QueryWithPrompt) error
+	Invoke(ctx context.Context, query *param.QueryWithPrompt) (string, error)
 }
 
 type searchAgentService struct {
@@ -183,7 +183,7 @@ func initAgentGraph(
 
 }
 
-func (sa *searchAgentService) Invoke(ctx context.Context, query *param.QueryWithPrompt) error {
+func (sa *searchAgentService) Invoke(ctx context.Context, query *param.QueryWithPrompt) (string, error) {
 	result, err := sa.graph.Invoke(ctx, map[string]any{
 		"index":           query.Index,
 		"query":           query.Query,
@@ -192,17 +192,15 @@ func (sa *searchAgentService) Invoke(ctx context.Context, query *param.QueryWith
 	})
 	if err != nil {
 		log.Printf("Failed to invoke graph: %v", err)
-		return err
+		return "", err
 	}
 
 	// 从结果中提取最终回复
 	if finalResponse, ok := result["finalResponse"].(*schema.Message); ok {
-		fmt.Println(finalResponse.Content)
-		return nil
+		return finalResponse.Content, nil
 	}
 
-	fmt.Println("抱歉，我无法理解您的请求。")
-	return nil
+	return "抱歉，我无法理解您的请求。", nil
 }
 
 func (sa *searchAgentService) Stream(ctx context.Context, query *param.QueryWithPrompt) error {
