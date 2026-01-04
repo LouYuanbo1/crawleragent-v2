@@ -17,8 +17,8 @@ type Agent struct {
 }
 
 type QueryWithPrompt struct {
-	Index           string `json:"index"`
-	Query           string `json:"query"`
-	PromptEsRAGMode string `json:"promptEsRAGMode"`
-	PromptChatMode  string `json:"promptChatMode"`
+	Index           string `json:"index,omitempty"`
+	Query           string `json:"query,omitempty"`
+	PromptEsRAGMode string `json:"promptEsRAGMode,omitempty"`
+	PromptChatMode  string `json:"promptChatMode,omitempty"`
 }

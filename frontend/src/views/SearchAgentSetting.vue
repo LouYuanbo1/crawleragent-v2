@@ -114,9 +114,11 @@
               placeholder="请输入示例用户查询，用于测试提示词效果"
               rows="3"
             ></textarea>
+            <!--
             <div class="input-footer">
               <span class="char-count">{{ formData.query.length }}/500</span>
             </div>
+            -->
           </div>
           <div class="form-hint">可选的示例查询，用于测试提示词效果</div>
         </div>
@@ -127,11 +129,11 @@
         <button class="btn-secondary" @click="resetForm">
           重置
         </button>
-        <button class="btn-primary" @click="submitForm" :disabled="!isFormValid">
-          保存配置
-        </button>
         <button class="btn-outline" @click="testConfiguration">
           测试配置
+        </button>
+        <button class="btn-primary" @click="submitForm" :disabled="!isFormValid">
+          保存配置
         </button>
       </div>
 
@@ -155,6 +157,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import request from '../api/request'
+import router from '../router'
 
 // 响应式数据
 const isOpen = ref(false)
@@ -204,13 +207,6 @@ const getDocumentIndexList = async () => {
     })
     mapIndexCount.value = response.data || {}
     
-    // 如果有默认索引，自动选择第一个
-    /*
-    const indices = Object.keys(mapIndexCount.value)
-    if (indices.length > 0 && !selectedIndex.value) {
-      selectedIndex.value = indices[0]
-    }
-    */
   } catch (error) {
     console.error('获取文档索引列表失败:', error)
     mapIndexCount.value = {}
@@ -225,25 +221,25 @@ const submitForm = async () => {
   }
   
   try {
-    const payload = {
-      index: selectedIndex.value,
-      prompt_es_rag_mode: formData.value.promptEsRagMode,
-      prompt_chat_mode: formData.value.promptChatMode,
-      query_example: formData.value.query,
-      timestamp: new Date().toISOString()
-    }
-    
     const response = await request({
-      url: '/api/prompt-configs',
+      url: '/api/searchagent/setting',
       method: 'POST',
-      data: payload
+      data: {
+      index: selectedIndex.value,
+      promptEsRagMode: formData.value.promptEsRagMode,
+      promptChatMode: formData.value.promptChatMode,
+      }
     })
     
     if (response.code === 200) {
-      alert('配置保存成功！')
-      // 可以在这里添加跳转或刷新逻辑
+      alert('配置保存成功,三秒后跳转至搜索智能体页面')
+
+      setTimeout(() => {
+        router.push({ name: 'SearchAgent' })
+      }, 3000)
+      
     } else {
-      alert('保存失败：' + response.message)
+      alert('保存失败：' + response.msg)
     }
   } catch (error) {
     console.error('保存配置失败:', error)
@@ -269,16 +265,25 @@ const testConfiguration = async () => {
     return
   }
 
-const response = await request({
-    url: '/api/searchagent',
-    method: 'POST',
-    data: {
-    index: selectedIndex.value,
-    ...formData.value
+try {
+    const response = await request({
+      url: '/api/searchagent/test',
+      method: 'POST',
+      data: {
+      index: selectedIndex.value,
+      ...formData.value
+      }
+    })
+    
+    if (response.code === 200) {
+      testResult.value = response.data || ""
+    } else {
+      alert('测试失败：' + response.msg)
     }
-})
-
-testResult.value = response.data || ""
+  } catch (error) {
+    console.error('测试失败:', error)
+    alert('测试失败 ,请检查网络连接或模型连接')
+  }
 }
 
 // 生命周期

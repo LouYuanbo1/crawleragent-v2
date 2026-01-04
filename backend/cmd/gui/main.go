@@ -62,7 +62,7 @@ func main() {
 	docController.RegisterRoutes(router)
 
 	searchAgentController := searchAgentController.InitSearchAgentController(searchAgent)
-	searchAgentController.RegisterRoutes(router)
+	searchAgentController.RegisterRoutes(router,appcfg)
 
 	if err := router.Run(); err != nil {
 		log.Fatalf("failed to run server: %v", err)
