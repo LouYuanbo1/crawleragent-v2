@@ -4,7 +4,7 @@ elasticsearch:
   host: http://localhost
   port: 9200
 rod:
-  user_data_dir: "path_where_you_want_to_save_chrome_data"
+  user_data_dir: path_where_you_want_to_save_chrome_data
   user_mode: false
   headless: false
   disable_blink_features: AutomationControlled
@@ -32,3 +32,5 @@ llm:
   host: http://localhost
   port: 11434
   model: qwen3:1.7b
+prompt:
+  prompt_dir: path_where_you_want_to_save_prompt
