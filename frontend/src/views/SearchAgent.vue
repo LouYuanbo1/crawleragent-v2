@@ -331,45 +331,45 @@ onMounted(() => {
 .header-section {
   background: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 16px; /* 减小头部内边距 */
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  margin-bottom: 24px;
+  margin-bottom: 16px; /* 减小底部外边距 */
 }
 
 .title-section h1 {
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0; /* 减小标题底部外边距 */
   color: #1a1a1a;
-  font-size: 28px;
+  font-size: 24px; /* 稍微减小标题字体大小 */
   font-weight: 600;
 }
 
 .subtitle {
   color: #666;
   margin: 0;
-  font-size: 14px;
+  font-size: 13px; /* 减小副标题字体大小 */
 }
 
 .filter-section {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-top: 20px;
+  margin-top: 12px; /* 减小筛选区域顶部外边距 */
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px; /* 减小筛选项之间的间隙 */
 }
 
 .index-selector {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px; /* 减小索引选择器内部间隙 */
   flex: 1;
-  min-width: 280px;
+  min-width: 240px; /* 稍微减小最小宽度 */
 }
 
 .index-selector label {
   font-weight: 500;
   color: #333;
-  font-size: 14px;
+  font-size: 13px; /* 减小标签字体大小 */
 }
 
 .dropdown-container {
@@ -378,22 +378,22 @@ onMounted(() => {
 
 .dropdown-btn {
   width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
+  padding: 8px 12px; /* 大幅减小下拉按钮内边距 */
+  border: 1px solid #e1e5e9; /* 减小边框宽度 */
+  border-radius: 6px; /* 稍微减小圆角 */
   background: white;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 15px;
+  font-size: 14px; /* 减小字体大小 */
   transition: all 0.3s ease;
-  min-height: 44px;
+  min-height: 36px; /* 减小最小高度 */
 }
 
 .dropdown-btn:hover {
   border-color: #4a6cf7;
-  box-shadow: 0 2px 8px rgba(74, 108, 247, 0.1);
+  box-shadow: 0 2px 6px rgba(74, 108, 247, 0.1); /* 减小阴影范围 */
 }
 
 .selected-text {
@@ -404,7 +404,7 @@ onMounted(() => {
 
 .dropdown-icon {
   color: #666;
-  font-size: 12px;
+  font-size: 11px; /* 减小图标字体大小 */
 }
 
 .dropdown-list {
@@ -412,18 +412,18 @@ onMounted(() => {
   top: 100%;
   left: 0;
   right: 0;
-  margin-top: 8px;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
+  margin-top: 4px; /* 减小下拉列表顶部外边距 */
+  border: 1px solid #e1e5e9; /* 减小边框宽度 */
+  border-radius: 6px; /* 减小圆角 */
   background: white;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1); /* 减小阴影范围 */
   z-index: 1000;
-  max-height: 300px;
+  max-height: 200px; /* 减小最大高度 */
   overflow-y: auto;
 }
 
 .dropdown-item {
-  padding: 12px 16px;
+  padding: 8px 12px; /* 减小下拉项内边距 */
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -444,11 +444,11 @@ onMounted(() => {
 
 .item-text {
   font-weight: 500;
-  margin-bottom: 4px;
+  margin-bottom: 2px; /* 减小文本底部外边距 */
 }
 
 .item-desc {
-  font-size: 12px;
+  font-size: 11px; /* 减小描述字体大小 */
   color: #888;
   font-weight: normal;
 }
@@ -457,36 +457,36 @@ onMounted(() => {
   color: #4a6cf7;
   font-weight: bold;
   position: absolute;
-  right: 16px;
+  right: 12px; /* 调整复选标记位置 */
 }
 
 .dropdown-empty {
-  padding: 20px;
+  padding: 12px; /* 减小空状态内边距 */
   text-align: center;
   color: #999;
-  font-size: 14px;
+  font-size: 13px; /* 减小字体大小 */
 }
 
 /* 操作按钮 */
 .action-buttons {
   display: flex;
-  gap: 12px;
+  gap: 8px; /* 减小按钮间隙 */
   align-items: center;
   flex-wrap: wrap;
 }
 
 .action-btn {
-  padding: 10px 16px;
-  border-radius: 8px;
+  padding: 6px 12px; /* 减小按钮内边距 */
+  border-radius: 6px; /* 减小圆角 */
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px; /* 减小字体大小 */
   font-weight: 500;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px; /* 减小图标间隙 */
   border: none;
-  min-height: 44px;
+  min-height: 32px; /* 减小最小高度 */
 }
 
 .action-btn.primary {
@@ -497,7 +497,7 @@ onMounted(() => {
 .action-btn.primary:hover {
   background: #3a5ce5;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(74, 108, 247, 0.3);
+  box-shadow: 0 2px 8px rgba(74, 108, 247, 0.3); /* 减小阴影范围 */
 }
 
 .action-btn.secondary {
@@ -512,110 +512,15 @@ onMounted(() => {
 }
 
 .btn-icon {
-  font-size: 16px;
+  font-size: 14px; /* 减小图标大小 */
 }
 
-/* 提示词编辑器 */
-.prompt-editor-section {
-  background: white;
-  border-radius: 12px;
-  padding: 0;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  margin-bottom: 24px;
-  overflow: hidden;
-}
-
-.editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  border-bottom: 1px solid #eee;
-  background: #f8f9fa;
-}
-
-.editor-header h3 {
-  margin: 0;
-  color: #1a1a1a;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.close-editor-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #666;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-.close-editor-btn:hover {
-  background: #eee;
-  color: #333;
-}
-
-.editor-body {
-  padding: 24px;
-}
-
-.editor-controls {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.editor-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.editor-field.full-width {
-  flex: 0 0 100%;
-}
-
-.editor-field label {
-  font-weight: 500;
-  color: #333;
-  font-size: 14px;
-}
-
-.editor-field input,
-.editor-field textarea {
-  padding: 12px;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.editor-field input:focus,
-.editor-field textarea:focus {
-  outline: none;
-  border-color: #4a6cf7;
-  box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
-}
-
-.editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-/* 对话区域 */
+/* 对话区域 - 大幅增加高度 */
 .chat-section {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 300px);
-  min-height: 500px;
+  height: calc(100vh - 220px); /* 大幅增加高度，从300px减到220px */
+  min-height: 600px; /* 增加最小高度 */
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
@@ -625,15 +530,15 @@ onMounted(() => {
 .chat-history {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 16px; /* 适当减小内边距以增加内容区域 */
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px; /* 适当减小消息间隙 */
 }
 
 .empty-conversation {
   text-align: center;
-  padding: 60px 20px;
+  padding: 40px 20px; /* 适当减小空状态内边距 */
   color: #999;
   flex: 1;
   display: flex;
@@ -643,21 +548,21 @@ onMounted(() => {
 }
 
 .empty-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
+  font-size: 48px; /* 适当减小图标大小 */
+  margin-bottom: 12px;
   opacity: 0.5;
 }
 
 .empty-title {
-  font-size: 20px;
+  font-size: 18px; /* 适当减小标题大小 */
   color: #666;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-weight: 500;
 }
 
 .empty-desc {
   color: #999;
-  font-size: 14px;
+  font-size: 13px; /* 适当减小描述字体大小 */
   max-width: 400px;
   line-height: 1.5;
 }
@@ -666,12 +571,12 @@ onMounted(() => {
 .message-list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px; /* 适当减小消息间隙 */
 }
 
 .message-item {
   display: flex;
-  gap: 16px;
+  gap: 12px; /* 适当减小头像间隙 */
   animation: fadeIn 0.3s ease;
 }
 
@@ -689,13 +594,13 @@ onMounted(() => {
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 32px; /* 适当减小头像大小 */
+  height: 32px; /* 适当减小头像大小 */
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 16px; /* 适当减小头像内文字大小 */
 }
 
 .user-avatar {
@@ -710,38 +615,38 @@ onMounted(() => {
 
 .message-content {
   flex: 1;
-  max-width: calc(100% - 56px);
+  max-width: calc(100% - 44px); /* 适当调整最大宽度 */
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px; /* 减小头部底部外边距 */
 }
 
 .message-role {
   font-weight: 600;
   color: #333;
-  font-size: 14px;
+  font-size: 13px; /* 减小角色字体大小 */
 }
 
 .message-time {
-  font-size: 12px;
+  font-size: 11px; /* 减小时间字体大小 */
   color: #999;
 }
 
 .message-body {
-  margin-bottom: 12px;
+  margin-bottom: 8px; /* 减小消息体底部外边距 */
 }
 
 /* 用户消息 */
 .user-message {
   background: #4a6cf7;
   color: white;
-  padding: 12px 16px;
-  border-radius: 12px 12px 4px 12px;
-  line-height: 1.5;
+  padding: 8px 12px; /* 减小内边距 */
+  border-radius: 10px 10px 4px 10px; /* 适当减小圆角 */
+  line-height: 1.4; /* 适当减小行高 */
   word-break: break-word;
 }
 
@@ -749,9 +654,9 @@ onMounted(() => {
 .assistant-message {
   background: #f8f9fa;
   color: #333;
-  padding: 12px 16px;
-  border-radius: 12px 12px 12px 4px;
-  line-height: 1.5;
+  padding: 8px 12px; /* 减小内边距 */
+  border-radius: 10px 10px 10px 4px; /* 适当减小圆角 */
+  line-height: 1.4; /* 适当减小行高 */
   word-break: break-word;
 }
 
@@ -765,10 +670,10 @@ onMounted(() => {
 }
 
 .streaming-cursor {
-  width: 8px;
-  height: 16px;
+  width: 6px; /* 减小光标宽度 */
+  height: 12px; /* 减小光标高度 */
   background: #4a6cf7;
-  margin-left: 4px;
+  margin-left: 3px; /* 减小光标左边距 */
   animation: blink 1s infinite;
 }
 
@@ -777,158 +682,23 @@ onMounted(() => {
   51%, 100% { opacity: 0; }
 }
 
-.markdown-content {
-  line-height: 1.6;
-}
-
-.markdown-content h1,
-.markdown-content h2,
-.markdown-content h3 {
-  margin-top: 16px;
-  margin-bottom: 8px;
-}
-
-.markdown-content p {
-  margin-bottom: 12px;
-}
-
-.markdown-content code {
-  background: #f1f3f5;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Consolas', monospace;
-  font-size: 0.9em;
-}
-
-.markdown-content pre {
-  background: #f8f9fa;
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin: 12px 0;
-}
-
-.markdown-content pre code {
-  background: none;
-  padding: 0;
-}
-
-/* 引用来源 */
-.sources-section {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px dashed #ddd;
-}
-
-.sources-title {
-  font-size: 12px;
-  color: #666;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-
-.sources-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.source-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: white;
-  border-radius: 6px;
-  border: 1px solid #e8e8e8;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 13px;
-}
-
-.source-item:hover {
-  border-color: #4a6cf7;
-  background: #f0f7ff;
-  transform: translateX(2px);
-}
-
-.source-id {
-  background: #4a6cf7;
-  color: white;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: bold;
-}
-
-.source-title {
-  flex: 1;
-  color: #333;
-}
-
-.source-score {
-  color: #4a6cf7;
-  font-size: 11px;
-  font-weight: 600;
-  background: #f0f7ff;
-  padding: 2px 6px;
-  border-radius: 10px;
-}
-
-/* 消息操作 */
-.message-actions {
-  display: flex;
-  gap: 8px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.message-item:hover .message-actions {
-  opacity: 1;
-}
-
-.message-action-btn {
-  padding: 6px 10px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  color: #666;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s;
-}
-
-.message-action-btn:hover {
-  background: #f8f9fa;
-  color: #4a6cf7;
-  border-color: #4a6cf7;
-}
-
 /* 加载指示器 */
 .loading-indicator {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 20px;
+  gap: 8px; /* 减小加载指示器间隙 */
+  padding: 12px; /* 减小内边距 */
 }
 
 .loading-dots {
   display: flex;
-  gap: 6px;
+  gap: 4px; /* 减小点之间间隙 */
 }
 
 .loading-dots span {
-  width: 8px;
-  height: 8px;
+  width: 6px; /* 减小点大小 */
+  height: 6px; /* 减小点大小 */
   border-radius: 50%;
   background: #4a6cf7;
   animation: bounce 1.4s infinite ease-in-out both;
@@ -944,38 +714,39 @@ onMounted(() => {
 
 .loading-text {
   color: #666;
-  font-size: 14px;
+  font-size: 13px; /* 减小字体大小 */
 }
 
-/* 输入区域 */
+/* 输入区域 - 大幅降低高度 */
 .input-section {
   border-top: 1px solid #eee;
-  padding: 16px 24px;
+  padding: 8px 16px; /* 大幅减小输入区域内边距 */
   background: #fafafa;
 }
 
 .input-container {
   background: white;
-  border: 2px solid #e1e5e9;
-  border-radius: 12px;
-  padding: 16px;
+  border: 1px solid #e1e5e9; /* 减小边框宽度 */
+  border-radius: 8px; /* 减小圆角 */
+  padding: 8px; /* 大幅减小内边距 */
   transition: all 0.3s ease;
 }
 
 .input-container:focus-within {
   border-color: #4a6cf7;
-  box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
+  box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.1); /* 减小阴影范围 */
 }
 
 .message-input {
   width: 100%;
   border: none;
   outline: none;
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 14px; /* 减小字体大小 */
+  line-height: 1.4; /* 减小行高 */
   resize: none;
   font-family: inherit;
   background: transparent;
+  min-height: 24px; /* 设置最小高度 */
 }
 
 .message-input:disabled {
@@ -987,27 +758,27 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 12px;
+  margin-top: 8px; /* 减小操作区域顶部外边距 */
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px; /* 减小操作按钮间隙 */
 }
 
 .input-controls {
   display: flex;
-  gap: 8px;
+  gap: 6px; /* 减小控制按钮间隙 */
 }
 
 .control-btn {
-  padding: 8px 12px;
+  padding: 4px 8px; /* 减小控制按钮内边距 */
   background: white;
   border: 1px solid #ddd;
-  border-radius: 6px;
+  border-radius: 4px; /* 减小圆角 */
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px; /* 减小字体大小 */
   color: #666;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px; /* 减小图标间隙 */
   transition: all 0.2s;
 }
 
@@ -1019,18 +790,19 @@ onMounted(() => {
 
 .send-controls {
   display: flex;
-  gap: 8px;
+  gap: 6px; /* 减小发送按钮间隙 */
   align-items: center;
 }
 
 .send-btn {
-  padding: 10px 24px;
-  font-size: 15px;
+  padding: 6px 16px; /* 减小发送按钮内边距 */
+  font-size: 14px; /* 减小字体大小 */
+  min-height: 28px; /* 减小最小高度 */
 }
 
 .sending-spinner {
-  width: 16px;
-  height: 16px;
+  width: 14px; /* 减小加载图标大小 */
+  height: 14px; /* 减小加载图标大小 */
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
@@ -1042,12 +814,12 @@ onMounted(() => {
 }
 
 .input-hints {
-  margin-top: 12px;
+  margin-top: 6px; /* 减小提示文本顶部外边距 */
   text-align: center;
 }
 
 .hint-text {
-  font-size: 13px;
+  font-size: 12px; /* 减小字体大小 */
   color: #999;
 }
 
@@ -1065,11 +837,17 @@ onMounted(() => {
     width: 100%;
     justify-content: center;
   }
+  
+  /* 响应式时调整聊天区域高度 */
+  .chat-section {
+    height: calc(100vh - 250px);
+    min-height: 550px;
+  }
 }
 
 @media (max-width: 768px) {
   .ai-chat-container {
-    padding: 16px;
+    padding: 12px;
   }
   
   .message-item {
@@ -1097,8 +875,10 @@ onMounted(() => {
     justify-content: center;
   }
   
+  /* 移动端时进一步调整聊天区域高度 */
   .chat-section {
-    height: calc(100vh - 350px);
+    height: calc(100vh - 280px);
+    min-height: 450px;
   }
 }
 </style>
