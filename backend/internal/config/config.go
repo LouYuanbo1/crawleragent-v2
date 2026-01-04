@@ -46,4 +46,8 @@ type Config struct {
 		Port  int    `mapstructure:"port"`
 		Model string `mapstructure:"model"`
 	} `mapstructure:"llm"`
+
+	Prompt struct {
+		PromptDir string `mapstructure:"prompt_dir"`
+	} `mapstructure:"prompt"`
 }

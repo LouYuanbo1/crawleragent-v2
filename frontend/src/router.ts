@@ -3,15 +3,19 @@ import { createRouter, createWebHistory } from 'vue-router'
 // 导入页面组件（从 views/ 目录中）
 import Home from './views/Home.vue'
 import BossJob from './views/BossJob.vue'
+import SearchAgent from './views/SearchAgent.vue'
 import SearchAgentSetting from './views/SearchAgentSetting.vue'
 
 // 定义路由规则：路径 ↔ 页面组件
 const routes = [
   // 首页路由
   { path: '/', name: 'Home', component: Home },
-  // 设置页路由
+
   { path: '/bossjob', name: 'BossJob', component: BossJob },
   // 搜索智能体路由
+
+  { path: '/searchagent', name: 'SearchAgent', component: SearchAgent },
+
   { path: '/searchagent/setting', name: 'SearchAgentSetting', component: SearchAgentSetting },
 ]
 
