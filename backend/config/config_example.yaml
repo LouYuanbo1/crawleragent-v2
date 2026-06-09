@@ -28,6 +28,8 @@ embedding:
   host: http://localhost
   port: 11434
   model: nomic-embed-text
+deepseek:
+  api_key: your_deepseek_api_key
 llm:
   host: http://localhost
   port: 11434

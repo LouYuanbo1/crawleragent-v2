@@ -2,19 +2,21 @@ package main
 
 import (
 	"context"
-	"crawleragent-v2/internal/config"
-	"crawleragent-v2/internal/data/entity"
-	"crawleragent-v2/internal/data/model"
-	"crawleragent-v2/internal/infra/crawler/parallel"
-	"crawleragent-v2/internal/infra/embedding"
-	"crawleragent-v2/internal/infra/persistence/es"
-	"crawleragent-v2/internal/service/crawler"
-	"crawleragent-v2/param"
-	"crawleragent-v2/types"
+	"crawleragent-v2/config"
+	"crawleragent-v2/internal/crawler"
+	"crawleragent-v2/internal/embedding"
+	"crawleragent-v2/internal/model"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
+
+	"github.com/LouYuanbo1/go-webservice/elasticsearchx"
+	"github.com/cloudwego/eino-ext/components/embedding/ollama"
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/elastic/go-elasticsearch/v9/esutil"
 )
 
 var (
@@ -37,46 +39,56 @@ func main() {
 
 	fmt.Printf("Chromedp UserDataDir: %s\n", appcfg.Rod.UserDataDir)
 
-	//context.Background()
-	// 这是最常用的根Context，通常用在main函数、初始化或测试中，作为整个Context树的顶层。
-	// 当你不知道使用哪个Context，或者没有可用的Context时，可以使用它作为起点。
-	// 它永远不会被取消，没有超时时间，也没有值。
-	ctx := context.Background()
-	//运行前确保es服务启动完成
-	parallelCrawler, err := parallel.InitBrowserPoolCrawler(appcfg, 3)
+	crawl, err := crawler.InitBrowserPoolCrawler(&appcfg.Rod, 3)
 	if err != nil {
-		log.Fatalf("初始化BrowserPoolCrawler失败: %v", err)
+		log.Fatalf("初始化浏览器池爬虫失败: %v", err)
 	}
-	defer parallelCrawler.Close()
 
-	clickXActions := make([]param.Action, 0, 5)
-	for range 5 {
-		clickXActions = append(clickXActions, &param.ClickXAction{
-			BaseParams: param.BaseParams{
-				Delay: 2000 * time.Millisecond,
-			},
-			Selector: selectorCnBlogs,
+	ctx := context.Background()
+
+	ebd, err := ollama.NewEmbedder(ctx, &ollama.EmbeddingConfig{
+		Model:   appcfg.Embedding.Model,
+		BaseURL: fmt.Sprintf("%s:%d", appcfg.Embedding.Host, appcfg.Embedding.Port),
+	})
+
+	embedder, err := embedding.InitEmbedder(ctx, ebd, 32, 3)
+	if err != nil {
+		log.Fatalf("初始化嵌入模型失败: %v", err)
+	}
+	typedClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
+		Username: appcfg.Elasticsearch.Username,
+		Password: appcfg.Elasticsearch.Password,
+		Addresses: []string{
+			fmt.Sprintf("%s:%d", appcfg.Elasticsearch.Host, appcfg.Elasticsearch.Port),
 		},
-		)
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost:   10,
+			ResponseHeaderTimeout: 30 * time.Second,
+			IdleConnTimeout:       90 * time.Second,
+			// 跳过TLS验证（仅在开发环境中使用）
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	})
+	if err != nil {
+		log.Fatalf("failed to initialize Elasticsearch client: %s", err)
 	}
 
-	scrollActions := make([]param.Action, 0, 5)
-	for range 5 {
-		scrollActions = append(scrollActions, &param.ScrollAction{
-			BaseParams: param.BaseParams{
-				Delay: 2000 * time.Millisecond,
-			},
-			ScrollY: 1000,
-		})
+	esx := elasticsearchx.NewElasticsearchX(typedClient)
+
+	clickXAction := &crawler.ClickXAction{
+		Delay:    2000 * time.Millisecond,
+		Selector: selectorCnBlogs,
 	}
 
-	jsActions := make([]param.Action, 0, 5)
-	for range 5 {
-		jsActions = append(jsActions, &param.JavaScriptAction{
-			BaseParams: param.BaseParams{
-				Delay: 2000 * time.Millisecond,
-			},
-			JavaScript: `
+	scrollAction := &crawler.ScrollAction{
+		Delay:   2000 * time.Millisecond,
+		ScrollY: 1000,
+	}
+
+	jsAction := &crawler.JavaScriptAction{
+
+		Delay: 2000 * time.Millisecond,
+		JavaScript: `
 					() => {
 						function getAllHrefLinks() {
 							// 选择器「[href]」匹配所有拥有href属性的元素（无论标签类型）
@@ -97,45 +109,32 @@ func main() {
 						return getAllHrefLinks();
 					}
 				`,
-			ProcessFunc: func(ctx context.Context, content types.UrlContent) error {
-				log.Printf("执行JavaScript成功:%s, %d, %s", content.GetUrl(), len(content.GetContent()), string(content.GetContent()[:100]))
-				return nil
-			},
-		})
+		ProcessFunc: func(ctx context.Context, content crawler.UrlContent) error {
+			log.Printf("执行JavaScript成功:%s, %d, %s", content.GetUrl(), len(content.GetContent()), string(content.GetContent()[:100]))
+			return nil
+		},
 	}
 
-	scrollAndJsActions := make([]param.Action, 0, 10)
-	clickXAndJsActions := make([]param.Action, 0, 10)
+	scrollAndJsActions := make([]crawler.Action, 0, 10)
+	clickXAndJsActions := make([]crawler.Action, 0, 10)
 
-	for i := range 5 {
-		scrollAndJsActions = append(scrollAndJsActions, scrollActions[i])
-		scrollAndJsActions = append(scrollAndJsActions, jsActions[i])
+	for range 5 {
+		scrollAndJsActions = append(scrollAndJsActions, scrollAction)
+		scrollAndJsActions = append(scrollAndJsActions, jsAction)
 	}
 
-	for i := range 5 {
-		clickXAndJsActions = append(clickXAndJsActions, clickXActions[i])
-		clickXAndJsActions = append(clickXAndJsActions, jsActions[i])
+	for range 5 {
+		clickXAndJsActions = append(clickXAndJsActions, clickXAction)
+		clickXAndJsActions = append(clickXAndJsActions, jsAction)
 	}
 
-	typedClient, err := es.InitTypedEsClient(appcfg, 10)
-	if err != nil {
-		log.Fatalf("初始化TypedEsClient失败: %v", err)
-	}
-
-	embedder, err := embedding.InitEmbedder(ctx, appcfg, 5, 1)
-	if err != nil {
-		log.Fatalf("初始化嵌入器失败: %v", err)
-	}
-
-	crawlerService := service.InitCrawlerService(parallelCrawler, embedder, typedClient, 5)
-
-	processFuncBoss := func(ctx context.Context, content types.UrlContent) error {
+	processFuncBoss := func(ctx context.Context, content crawler.UrlContent) error {
 		var jsonData struct {
 			Code    int    `json:"code"`
 			Message string `json:"message"`
 			ZpData  struct {
-				HasMore    bool                    `json:"hasMore"`
-				JobResList []entity.RowBossJobData `json:"jobList"`
+				HasMore    bool                   `json:"hasMore"`
+				JobResList []model.RowBossJobData `json:"jobList"`
 			} `json:"zpData"`
 		}
 
@@ -147,9 +146,9 @@ func main() {
 			return fmt.Errorf("API返回错误: %d - %s", jsonData.Code, jsonData.Message)
 		}
 
-		results := make([]model.Document, 0, len(jsonData.ZpData.JobResList))
+		results := make([]*model.BossJobDoc, 0, len(jsonData.ZpData.JobResList))
 		for _, job := range jsonData.ZpData.JobResList {
-			rowData := &entity.RowBossJobData{
+			rowData := &model.RowBossJobData{
 				EncryptJobId:     job.EncryptJobId,
 				SecurityId:       job.SecurityId,
 				JobName:          job.JobName,
@@ -169,15 +168,30 @@ func main() {
 			results = append(results, doc)
 		}
 
-		crawlerService.EmbeddingAndIndexDocs(ctx, results)
+		embeddingStrings := make([]string, 0, len(results))
+		for _, doc := range results {
+			embeddingStrings = append(embeddingStrings, doc.GetEmbeddingString())
+		}
+		embeddings, err := embedder.Embed(ctx, embeddingStrings)
+		if err != nil {
+			return fmt.Errorf("嵌入文档失败: %w", err)
+		}
+		for i, doc := range results {
+			doc.SetEmbedding(embeddings[i])
+		}
+		err = esx.BulkIndexDocs[model.BossJobDoc](ctx, results, esutil.BulkIndexerConfig{}, true)
+		if err != nil {
+			return fmt.Errorf("索引文档失败: %w", err)
+		}
+		log.Printf("转换文档: %v", results)
 
 		return nil
 	}
 
-	params := []*param.ParallelCrawlerParam{
+	crawl.Crawl(context.Background(), []*crawler.CrawlerParam{
 		{
 			URL: urlBoss,
-			NetworkConfigs: []*param.ParallelNetworkConfig{
+			NetworkConfigs: []*crawler.NetworkConfig{
 				{
 					URLPattern:  urlPatternBoss,
 					ProcessFunc: processFuncBoss,
@@ -185,51 +199,32 @@ func main() {
 			},
 			Actions: scrollAndJsActions,
 		},
-
-		{
-			URL: urlBili,
-			NetworkConfigs: []*param.ParallelNetworkConfig{
-				{
-					URLPattern: urlPatternBili,
-				},
-			},
-			Actions: scrollAndJsActions,
-		},
 		{
 			URL: urlCnBlogs,
-			NetworkConfigs: []*param.ParallelNetworkConfig{
+			NetworkConfigs: []*crawler.NetworkConfig{
 				{
 					URLPattern: urlPatternCnBlogs,
+					ProcessFunc: func(ctx context.Context, content crawler.UrlContent) error {
+						log.Printf("执行JavaScript成功:%s, %d, %s", content.GetUrl(), len(content.GetContent()), string(content.GetContent()[:100]))
+						return nil
+					},
 				},
 			},
 			Actions: clickXAndJsActions,
 		},
 		{
-			URL: urlCsdn,
-			NetworkConfigs: []*param.ParallelNetworkConfig{
+			URL: urlBili,
+			NetworkConfigs: []*crawler.NetworkConfig{
 				{
-					URLPattern: urlPatternCsdn,
+					URLPattern: urlPatternBili,
+					ProcessFunc: func(ctx context.Context, content crawler.UrlContent) error {
+						log.Printf("执行JavaScript成功:%s, %d, %s", content.GetUrl(), len(content.GetContent()), string(content.GetContent()[:100]))
+						return nil
+					},
 				},
 			},
 			Actions: scrollAndJsActions,
 		},
-	}
-	err = crawlerService.StartCrawling(ctx, params)
-	if err != nil {
-		log.Fatalf("启动爬虫失败: %v", err)
-	}
+	})
 
-	count, err := typedClient.CountDocs(ctx, (&model.BossJobDoc{}).GetIndex())
-	if err != nil {
-		log.Fatalf("查询索引文档数量失败: %v", err)
-	}
-	//打印索引中的文档数量
-	fmt.Printf("索引中的文档数量: %d\n", count)
-
-	err = typedClient.ToExcel(ctx, "C:/Users/15325/Desktop/boss_jobs.xlsx", (&model.BossJobDoc{}).GetIndex(), []string{"salaryDesc"}, 1000)
-	if err != nil {
-		log.Fatalf("导出索引文档到Excel失败: %v", err)
-	}
-
-	log.Println("所有任务完成")
 }

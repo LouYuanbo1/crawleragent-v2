@@ -10,14 +10,10 @@ import (
 	"net/http"
 	"time"
 
-	agentController "crawleragent-v2/internal/controller/agent"
-	docController "crawleragent-v2/internal/controller/document"
-
 	elasticsearchRetriever "github.com/LouYuanbo1/go-eino-agent/tools/retriever/elasticsearch"
 	embeddingOllama "github.com/cloudwego/eino-ext/components/embedding/ollama"
 	"github.com/cloudwego/eino-ext/components/model/deepseek"
 	"github.com/elastic/go-elasticsearch/v9"
-	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -81,16 +77,13 @@ func main() {
 		fmt.Printf("Error creating supervisor agent: %v", err)
 		return
 	}
+	/*
+		agent.OutputMessage(ctx, "打开CSDN,向下滑动五次，之后获取主页前三个文章标题", func(s string) {
+			fmt.Print(s)
+		})
+	*/
+	agent.OutputMessage(ctx, "帮我使用本地搜索寻找一下最近的岗位信息", func(s string) {
+		fmt.Print(s)
+	})
 
-	router := gin.Default()
-
-	docController := docController.InitDocumentController(elasticsearchClient)
-	docController.RegisterRoutes(router)
-
-	agentController := agentController.InitAgentController(agent)
-	agentController.RegisterRoutes(router, appcfg)
-
-	if err := router.Run(); err != nil {
-		log.Fatalf("failed to run server: %v", err)
-	}
 }
