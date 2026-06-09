@@ -1,354 +1,340 @@
 # CrawlerAgent-v2
 
-CrawlerAgent-v2 是一个基于 AI 的网页爬虫代理库，为尝试智能信息提取和网页内容处理而设计。它结合了浏览器自动化、网络响应监听和大语言模型（LLM）技术，提供了一种高效、灵活的网页数据采集和处理解决方案。
+CrawlerAgent-v2 是一个基于 AI Agent 架构的智能网页爬虫系统，采用 Supervisor 模式编排多个专业 Agent，通过大语言模型驱动浏览器自动化操作、智能内容提取和本地知识库检索。
+
+## 架构概览
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Supervisor Agent                      │
+│               (任务路由与子Agent协调)                       │
+├─────────────────────┬───────────────────────────────────┤
+│   Crawler Agent     │       Retriever Agent              │
+│  (浏览器自动化抓取)    │     (本地知识库检索)                 │
+├─────────────────────┼───────────────────────────────────┤
+│  navigate_tool      │       retriever_tool               │
+│  click_tool         │       (Elasticsearch 向量搜索)      │
+│  scroll_tool        │                                    │
+│  javascript_tool    │                                    │
+│  html_tool          │                                    │
+└─────────────────────┴───────────────────────────────────┘
+```
 
 ## 项目特点
 
-- **AI 驱动的信息提取**：集成大语言模型，根据自定义 schema 智能提取网页信息
-- **AI 信息搜索**：利用 LLM 对持久化信息进行智能搜索
-- **强大的浏览器自动化**：基于 Rod 库实现完整的浏览器控制，支持点击、滚动等操作
-- **网络响应监听**：实时捕获和分析特定 URL 模式的网络响应
-- **智能 HTML 处理**：自动识别和提取网页主要内容，支持标签过滤和清洗
-- **高度可配置**：提供丰富的配置选项，适应不同的爬取场景
-- **模块化设计**：清晰的组件分离，易于扩展和维护
-- **多入口支持**：提供命令行工具、搜索代理等多种使用方式
+- **Supervisor 多 Agent 编排**：基于 CloudWeGo Eino ADK 和 prebuilt/supervisor，由一个 Supervisor Agent 自动判断任务类型并分发给 Crawler Agent 或 Retriever Agent 执行
+- **LLM 驱动的浏览器自动化**：Agent 自主决定使用何种工具（导航、点击、滚动、执行 JS、提取内容），无需手动编排操作序列
+- **智能正文提取**：基于 go-readability 算法，自动去除广告、导航栏等噪音，提取页面核心内容
+- **浏览器池并发爬取**：支持多浏览器实例并发执行，每个实例独立运行，配合 Worker 池高效处理批量任务
+- **网络响应拦截**：实时捕获匹配特定 URL 模式的 API 响应，适合抓取 XHR/Fetch 接口数据
+- **向量检索**：集成 Elasticsearch + Ollama Embedding，支持本地知识库的语义搜索
+- **REST API 服务**：基于 Gin 提供 HTTP 接口，可集成到其他系统中
+- **Vue 3 前端**：Vite + TypeScript + Vue 3 构建的现代化前端界面
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| AI Agent 框架 | CloudWeGo Eino (ADK + Supervisor) |
+| LLM | DeepSeek API / Ollama 本地模型 |
+| 浏览器自动化 | go-rod + go-rod/stealth |
+| 内容提取 | go-readability |
+| 向量嵌入 | Ollama (nomic-embed-text) |
+| 搜索引擎 | Elasticsearch 9.x |
+| HTTP 框架 | Gin |
+| 配置管理 | Viper |
+| 前端 | Vue 3 + TypeScript + Vite + Axios |
+| 测试 | testify |
 
 ## 目录结构
 
 ```
 crawleragent-v2/
 ├── backend/
-│   ├── cmd/                # 命令行入口
-│   │   ├── crawlagent/     # 爬虫代理主程序
-│   │   ├── searchagent/    # 搜索代理
-│   │   ├── crawler/        # 基础爬虫
-│   │   └── gui/            # 图形界面
-│   ├── internal/           # 内部实现
-│   │   ├── config/         # 配置管理
-│   │   ├── controller/     # 控制器
-│   │   ├── data/           # 数据模型
-│   │   ├── infra/          # 基础设施
-│   │   │   ├── crawler/    # 爬虫实现
-│   │   │   ├── embedding/  # 嵌入模型
-│   │   │   ├── llm/        # 语言模型
-│   │   │   └── persistence/# 持久化
-│   │   ├── middleware/     # 中间件
-│   │   └── service/        # 服务层
-│   ├── param/              # 参数定义
-│   ├── types/              # 类型定义
-│   └── utils/              # 工具函数
-└── .gitignore
+│   ├── cmd/
+│   │   ├── agent/             # Agent 主程序入口（Supervisor模式）
+│   │   ├── crawler/           # 批量爬虫入口
+│   │   └── gui/               # Web GUI 服务入口
+│   ├── config/
+│   │   ├── config.go          # 配置结构定义与加载
+│   │   └── config_example.yaml# 配置示例文件
+│   ├── internal/
+│   │   ├── agent/
+│   │   │   ├── agent.go       # Agent 定义：CrawlerAgent、RetrieverAgent、SupervisorAgent
+│   │   │   ├── crawler.go     # 浏览器爬虫实现（rod）
+│   │   │   ├── crawltool.go   # Agent 工具定义（navigate/click/scroll/js/html）
+│   │   │   ├── option.go      # 浏览器启动器选项
+│   │   │   └── option_test.go # 启动器选项测试
+│   │   ├── crawler/
+│   │   │   ├── crawler.go     # 浏览器池爬虫实现
+│   │   │   ├── action.go      # 页面操作定义（Click/Scroll/JS）
+│   │   │   ├── param.go       # 爬虫参数与网络配置
+│   │   │   ├── crawler_test.go
+│   │   │   ├── action_test.go
+│   │   │   ├── option_test.go
+│   │   │   └── param_test.go
+│   │   ├── controller/
+│   │   │   ├── agent/
+│   │   │   │   ├── agent.go       # Agent HTTP 控制器
+│   │   │   │   ├── dto.go         # 请求/响应 DTO
+│   │   │   │   └── middleware.go  # 配置注入中间件
+│   │   │   └── document/
+│   │   │       └── document.go    # ES 文档查询控制器
+│   │   ├── embedding/
+│   │   │   └── embedding.go   # 向量嵌入器（批量+信号量控制）
+│   │   └── model/
+│   │       └── model.go       # 数据模型（BossJobDoc 等）
+│   └── go.mod
+├── frontend/
+│   ├── src/                   # Vue 3 源码（开发中）
+│   ├── package.json           # 前端依赖
+│   ├── vite.config.ts         # Vite 配置（含 API 代理）
+│   └── index.html
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
 
 ## 核心组件
 
-### 1. CrawlAgentService
+### 1. SupervisorAgent
 
-爬虫代理服务是整个系统的核心，负责协调浏览器操作、HTML 处理和 LLM 信息提取。
+系统的总调度器，基于 CloudWeGo Eino 的 `prebuilt/supervisor`，管理两个子 Agent：
 
-- **主要功能**：
-  - 初始化和管理爬虫工作流
-  - 执行网页导航和操作
-  - 处理 HTML 内容和网络响应
-  - 调用 LLM 进行信息提取
-  - 支持流式和非流式输出
+- **CrawlerAgent**：负责网页抓取相关任务（导航、交互、内容提取）
+- **RetrieverAgent**：负责本地知识库检索任务（向量语义搜索）
 
-### 2. AICrawler
+Supervisor 接收用户自然语言指令后，自动判断应交给哪个子 Agent 处理。
 
-基于 Rod 库的 AI 爬虫实现，提供浏览器自动化和 HTML 处理功能。
+### 2. CrawlerAgent
 
-- **主要功能**：
-  - 浏览器启动和管理
-  - 网页导航和等待
-  - HTML 获取和清洗
-  - 执行用户操作（点击、滚动等）
-  - 网络响应监听
+网页抓取智能体，配备 5 个工具：
 
-### 3. LLM 集成
+| 工具 | 功能 | 典型用法 |
+|------|------|----------|
+| `navigate_tool` | 导航到目标 URL | 打开任意网页 |
+| `click_tool` | CSS/XPath 元素点击 | 翻页、展开、切换 Tab |
+| `scroll_tool` | 页面滚动 | 触发懒加载、无限滚动 |
+| `javascript_tool` | 执行 JavaScript | 提取动态数据、操作 DOM |
+| `html_tool` | 获取页面内容 | 智能正文提取或完整 HTML |
 
-集成大语言模型，用于智能信息提取和处理。
+每个工具执行后自动返回页面最新内容，Agent 可根据返回结果判断是否需要继续操作。
 
-- **支持的模型**：
-  - Ollama 本地模型
-  - 可扩展支持其他 LLM 服务
+### 3. RetrieverAgent
 
-### 4. 配置系统
+本地知识库检索智能体，通过 Elasticsearch 向量搜索从已索引的文档中检索相关信息。适用于：
+- 搜索已爬取的结构化数据（如招聘信息）
+- 基于语义相似度的模糊查询
 
-灵活的配置系统，支持多种配置选项。
+### 4. 浏览器池爬虫（crawler）
 
-- **主要配置项**：
-  - 浏览器设置（无头模式、用户代理等）
-  - LLM 配置（主机、端口、模型等）
-  - 嵌入模型配置
-  - Elasticsearch 配置（可选）
+独立的批量爬虫实现，支持：
+
+- **多实例并发**：预启动多个浏览器实例，通过 Worker 池分发任务
+- **网络拦截**：通过 URL 模式匹配捕获 XHR/Fetch 响应
+- **操作链**：支持 Click、Scroll、JavaScript 等多种操作的顺序组合
+- **回调处理**：每个操作和网络拦截都可注册自定义处理函数
 
 ## 快速开始
 
 ### 前置要求
 
-- Go 1.20+
-- 浏览器（Chrome 或基于 Chromium 的浏览器）
-- LLM 服务（如 Ollama）
+- Go 1.27+
+- Node.js 18+（前端）
+- Chrome / Chromium 浏览器
+- Ollama（用于本地嵌入模型）
+- Elasticsearch 9.x
+- DeepSeek API Key（或 Ollama 本地 LLM）
 
-### 安装
+### 1. 安装与配置
 
 ```bash
-go get github.com/yourusername/crawleragent-v2
+# 克隆项目
+git clone https://github.com/yourusername/crawleragent-v2.git
+cd crawleragent-v2/backend
 ```
 
-### 基本使用
+复制配置示例并修改：
+
+```bash
+cp config/config_example.yaml config/config.yaml
+```
+
+编辑 `config/config.yaml`，填入你的配置：
+
+```yaml
+elasticsearch:
+  username: your_es_username
+  password: your_es_password
+  host: http://localhost
+  port: 9200
+
+rod:
+  user_data_dir: user_data_dir
+  headless: false           # 调试时可设为 false 以观察浏览器操作
+  bin: C:/Program Files/Google/Chrome/Application/chrome.exe
+
+embedding:
+  host: http://localhost
+  port: 11434
+  model: nomic-embed-text
+
+deepseek:
+  api_key: your_deepseek_api_key
+
+llm:
+  host: http://localhost
+  port: 11434
+  model: qwen3:1.7b
+```
+
+### 2. 启动依赖服务
+
+```bash
+# 启动 Elasticsearch
+# 启动 Ollama 并拉取模型
+ollama pull nomic-embed-text
+ollama pull qwen3:1.7b
+```
+
+### 3. 运行
+
+```bash
+# 方式一：命令行 Agent（Supervisor 模式）
+go run cmd/agent/main.go
+
+# 方式二：批量爬虫
+go run cmd/crawler/main.go
+
+# 方式三：Web GUI 服务（启动后访问 http://localhost:8080）
+go run cmd/gui/main.go
+```
+
+### 4. 启动前端（可选）
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+前端通过 Vite 代理将 `/api` 请求转发到后端 `http://localhost:8080`。
+
+## 使用示例
+
+### Agent 模式（自然语言驱动）
 
 ```go
-package main
+// 示例：让 Agent 自动抓取 CSDN 首页文章
+agent.OutputMessage(ctx, "打开CSDN，向下滑动五次，之后获取主页前三个文章标题", func(s string) {
+    fmt.Print(s)
+})
 
-import (
-	"context"
-	"crawleragent-v2/internal/config"
-	"crawleragent-v2/internal/infra/crawler/ai"
-	"crawleragent-v2/internal/infra/llm"
-	"crawleragent-v2/internal/service/crawlagent"
-	"crawleragent-v2/param"
-	"log"
-	"time"
+// 示例：搜索本地知识库
+agent.OutputMessage(ctx, "帮我使用本地搜索寻找一下最近的岗位信息", func(s string) {
+    fmt.Print(s)
+})
+```
 
-	"github.com/cloudwego/eino/components/prompt"
-	"github.com/cloudwego/eino/schema"
-)
+Agent 会自动分析任务，选择合适的工具序列执行。
 
-func main() {
-	// 初始化配置
-	cfg, err := config.InitConfig()
-	if err != nil {
-		log.Fatalf("解析配置文件失败: %v", err)
-	}
+### 批量爬虫模式（编程式控制）
 
-	// 初始化浏览器爬虫
-	crawler, err := ai.InitAICrawler(cfg)
-	if err != nil {
-		log.Fatalf("初始化浏览器池失败: %v", err)
-	}
+```go
+// 初始化浏览器池（3个实例）
+crawl, _ := crawler.InitBrowserPoolCrawler(&appcfg.Rod, 3)
 
-	ctx := context.Background()
-
-	// 初始化LLM
-	llm, err := llm.InitLLM(ctx, cfg)
-	if err != nil {
-		log.Fatalf("初始化LLM失败: %v", err)
-	}
-
-	// 创建提示模板
-	prompt := prompt.FromMessages(
-		schema.FString,
-		schema.SystemMessage(`角色:你是一位信息提取工具,负责从HTML中提取信息并根据json风格的schema中的定义进行格式化。`),
-		schema.SystemMessage(`输入schema:\n{schema}`),
-		schema.SystemMessage(`以下是处理后的HTML:\n{cleanedHTML}\n\n搜寻其中的内容并将内容填入schema中,如果HTML中没有相关内容,忽略该字段。`),
-		schema.SystemMessage(`以下是监听的Json结果:\n{networkResponses}\n\n搜寻其中的内容并将内容填入schema中,如果Json中没有相关内容,忽略该字段。`),
-	)
-
-	// 初始化爬虫代理服务
-	agent, err := service.InitCrawlAgentService(ctx, llm, crawler, prompt)
-	if err != nil {
-		log.Fatalf("初始化CrawlAgent失败: %v", err)
-	}
-
-	// 示例1: 提取博客摘要
-	agent.Invoke(ctx, "https://www.cnblogs.com/", param.AICrawlerParam{
-		Formats: param.Formats{
-			Schema: param.Schema{
-				Type: "array",
-				Properties: map[string]param.Schema{
-					"summary": {
-						Type:        "string",
-						Description: "博客的摘要",
-					},
-				},
-			},
-		},
-		HTMLConfig: &param.AIHTMLConfig{
-			OnlyMainContent: true,
-			IncludeTags:     []string{"p"},
-		},
-	})
-
-	// 示例2: 提取视频标题并执行滚动操作
-	agent.Invoke(ctx, "https://www.bilibili.com/", param.AICrawlerParam{
-		Formats: param.Formats{
-			Schema: param.Schema{
-				Type: "array",
-				Properties: map[string]param.Schema{
-					"title": {
-						Type:        "string",
-						Description: "视频的标题",
-					},
-				},
-			},
-		},
-		NetworkConfig: &param.AINetworkConfig{
-			URLPatterns:  []string{"https://api.bilibili.com/x/web-interface/index/ogv/rcmd*"},
-			RespChanSize: 100,
-		},
-		Actions: []param.Action{
-			&param.ScrollAction{
-				BaseParams: param.BaseParams{
-					Delay: 1000 * time.Millisecond,
-				},
-				ScrollY: 1000,
-			},
-			&param.ScrollAction{
-				BaseParams: param.BaseParams{
-					Delay: 1000 * time.Millisecond,
-				},
-				ScrollY: 1500,
-			},
-		},
-	})
-
-	// 关闭浏览器
-	crawler.CloseAll()
+// 定义滚动操作
+scrollAction := &crawler.ScrollAction{
+    Delay:   2000 * time.Millisecond,
+    ScrollY: 1000,
 }
-```
 
-## 高级功能
-
-### 1. 网络响应监听
-
-捕获特定 URL 模式的网络响应，用于提取 API 数据。
-
-```go
-// 在参数中配置网络响应监听
-NetworkConfig: &param.AINetworkConfig{
-    URLPatterns:  []string{"https://api.example.com/*"},
-    RespChanSize: 100,
-}
-```
-
-### 2. 自定义操作序列
-
-执行一系列浏览器操作，如点击、滚动等。
-
-```go
-Actions: []param.Action{
-    &param.ClickAction{
-        BaseParams: param.BaseParams{
-            Delay: 500 * time.Millisecond,
-        },
-        Selector: "#load-more",
-    },
-    &param.ScrollAction{
-        BaseParams: param.BaseParams{
-            Delay: 1000 * time.Millisecond,
-        },
-        ScrollY: 2000,
+// 定义 JS 执行操作
+jsAction := &crawler.JavaScriptAction{
+    Delay: 2000 * time.Millisecond,
+    JavaScript: `() => { return document.querySelectorAll('[href]').length; }`,
+    ProcessFunc: func(ctx context.Context, content crawler.UrlContent) error {
+        log.Printf("链接数量: %s", string(content.GetContent()))
+        return nil
     },
 }
+
+// 执行爬取任务
+crawl.Crawl(context.Background(), []*crawler.CrawlerParam{
+    {
+        URL: "https://www.zhipin.com/web/geek/jobs?query=golang",
+        NetworkConfigs: []*crawler.NetworkConfig{
+            {
+                URLPattern:  "https://www.zhipin.com/wapi/zpgeek/search/joblist.json*",
+                ProcessFunc: processFuncBoss, // 自定义处理 + 写入ES
+            },
+        },
+        Actions: []crawler.Action{scrollAction, scrollAction, jsAction},
+    },
+})
 ```
 
-### 3. HTML 清洗和过滤
+### REST API 调用
 
-智能识别和提取网页主要内容，支持标签过滤。
+```bash
+# Agent 测试接口
+curl -X POST http://localhost:8080/api/searchagent/test \
+  -H "Content-Type: application/json" \
+  -d '{"query": "打开 https://www.csdn.net/ 获取首页文章标题"}'
 
-```go
-HTMLConfig: &param.AIHTMLConfig{
-    OnlyMainContent: true,
-    IncludeTags:     []string{"div", "p", "h1", "h2"},
-    ExcludeTags:     []string{"script", "style"},
-}
-```
+# 文档查询接口
+curl "http://localhost:8080/api/documents/boss_jobs?page=1&size=10"
 
-### 4. 流式输出
-
-支持流式输出结果，适用于实时处理。
-
-```go	agent.Stream(ctx, "https://example.com", params)
+# 索引统计
+curl "http://localhost:8080/api/documents/indices"
 ```
 
 ## 配置说明
 
-### 配置文件结构
+### 浏览器配置（rod）
 
-```yaml
-# 浏览器配置
-rod:
-  user_data_dir: "./user_data"
-  headless: true
-  user_agent: "Mozilla/5.0 (...)"
-  # 其他浏览器配置...
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `user_data_dir` | Chrome 用户数据目录 | `user_data_dir` |
+| `headless` | 无头模式 | `false` |
+| `disable_blink_features` | 禁用 Blink 特性（如 AutomationControlled） | - |
+| `incognito` | 隐身模式 | `false` |
+| `leakless` | 防泄漏模式 | `true` |
+| `bin` | Chrome 可执行文件路径 | - |
+| `user_agent` | 自定义 User-Agent | - |
 
-# LLM配置
-llm:
-  host: "localhost"
-  port: 11434
-  model: "llama2"
+### LLM 配置
 
-# 嵌入模型配置
-embedding:
-  host: "localhost"
-  port: 11434
-  model: "nomic-embed-text"
+| 参数 | 说明 |
+|------|------|
+| `deepseek.api_key` | DeepSeek API Key |
+| `llm.host` | Ollama 地址 |
+| `llm.port` | Ollama 端口 |
+| `llm.model` | Ollama 模型名 |
 
-# Elasticsearch配置（可选）
-elasticsearch:
-  host: "localhost"
-  port: 9200
-  username: "elastic"
-  password: "changeme"
-```
+### 嵌入模型配置
 
-## 技术架构
-
-### 核心流程图
-
-```mermaid
-sequenceDiagram
-    participant Client as 客户端
-    participant Agent as CrawlAgentService
-    participant Browser as 浏览器(rod)
-    participant LLM as 大语言模型
-    participant Network as 网络响应
-
-    Client->>Agent: Invoke(url, params)
-    Agent->>Browser: 导航到URL
-    Agent->>Browser: 执行操作(滚动、点击等)
-    Browser-->>Agent: 返回HTML
-    Agent->>Browser: 清洗HTML
-    Agent->>Network: 捕获网络响应
-    Network-->>Agent: 返回响应数据
-    Agent->>LLM: 提取信息(schema, HTML, 响应)
-    LLM-->>Agent: 返回提取结果
-    Agent-->>Client: 输出结果
-```
-
-### 工作流编排
-
-使用 CloudWeGo Eino 进行工作流编排，实现组件间的高效协作。
-
-```mermaid
-graph TD
-    Start[开始] --> ProcessHTML[处理HTML]
-    ProcessHTML --> Prompt[构建提示]
-    Prompt --> LLM[调用LLM]
-    LLM --> End[结束]
-```
+| 参数 | 说明 |
+|------|------|
+| `embedding.host` | Ollama 地址 |
+| `embedding.port` | Ollama 端口 |
+| `embedding.model` | 嵌入模型名（推荐 nomic-embed-text） |
 
 ## 应用场景
 
-- **信息提取**：从网页中提取结构化信息
-- **数据采集**：批量采集网页数据
-- **内容监控**：监控网页内容变化
-- **API 数据捕获**：捕获和分析网络 API 响应
-- **自动化测试**：模拟用户操作进行测试
+- **招聘信息采集**：批量抓取招聘网站数据，存入 ES 后进行语义搜索
+- **内容监控**：定期抓取目标网页，追踪内容变化
+- **竞品分析**：自动采集竞品网站的产品信息、价格、评价
+- **知识库构建**：将爬取的网页内容索引到 Elasticsearch，构建可搜索的知识库
+- **API 数据捕获**：拦截前端 API 调用，获取结构化 JSON 数据
 
-## 性能优化
+## 运行测试
 
-- **浏览器复用**：避免频繁启动和关闭浏览器
-- **并行处理**：支持并行爬取多个网页
-- **HTML 清洗**：减少传递给 LLM 的数据量
-- **网络响应过滤**：只捕获需要的网络响应
-
-## 贡献指南
-
-欢迎贡献代码、报告问题或提出建议！
-
+```bash
+cd backend
+go test ./...
+```
 
 ## 许可证
 
